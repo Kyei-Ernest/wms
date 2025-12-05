@@ -1,0 +1,125 @@
+from rest_framework import serializers
+from django.db import transaction
+from .models import User, Company
+from django.contrib.auth import  authenticate
+from django.contrib.auth.hashers import make_password
+
+
+
+
+# USER SERIALIZER (READ-ONLY BASIC DETAILS)
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "phone_number",
+            "email",
+            "profile_photo",
+            "address",
+            "is_verified",
+            "created_at",
+        ]
+        read_only_fields = ["username", "created_at", "is_verified"]
+
+
+# COMPANY SERIALIZER (FULL COMPANY DETAILS)
+class CompanySerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Company
+        fields = [
+            "id",
+            "user",
+            "company_name",
+            "gst_number",
+            "logo_url",
+            "weighing_system",
+            "incentive_per_100_percent_route",
+            "complaint_resolution_sla",
+            "total_producers",
+            "total_collectors",
+            "operational_cities",
+        ]
+
+
+class CompanyCreateSerializer(serializers.Serializer):
+    # USER FIELDS
+    phone_number = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    profile_photo = serializers.URLField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+
+    # COMPANY FIELDS
+    company_name = serializers.CharField()
+    gst_number = serializers.CharField()
+    logo_url = serializers.URLField(required=False, allow_blank=True)
+    #weighing_system = serializers.CharField()
+    #incentive_per_100_percent_route = serializers.DecimalField(max_digits=10, decimal_places=2)
+    complaint_resolution_sla = serializers.IntegerField()
+    #total_producers = serializers.IntegerField(required=False, default=0)
+    #total_collectors = serializers.IntegerField(required=False, default=0)
+    operational_cities = serializers.ListField(child=serializers.CharField(), required=False)# List of working days (Mon–Sun)
+    working_days = serializers.JSONField()
+
+    # Simple working hours (same every day)
+    opening_time = serializers.TimeField()
+    closing_time = serializers.TimeField()
+
+    # Price range numeric min/max
+    price_min = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True
+    )
+    price_max = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True
+    )
+
+    # VALIDATION
+    def validate(self, attrs):
+        email = attrs.get("email")
+        phone = attrs.get("phone_number")
+
+        # Duplicate email
+        if email and User.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"email": "This email is already registered."})
+
+        # Duplicate phone number
+        if phone and User.objects.filter(phone_number=phone).exists():
+            raise serializers.ValidationError({"phone_number": "This phone number is already registered."})
+        
+        
+
+        return attrs
+
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            # Extract user fields
+            user_fields = {
+                "phone_number": validated_data.pop("phone_number"),
+                "email": validated_data.pop("email", None),
+                "profile_photo": validated_data.pop("profile_photo", None),
+                "address": validated_data.pop("address", None),
+                "role": "company"
+            }
+
+            # Create user (auto assigns username)
+            user = User(**user_fields)
+            user.password = make_password(validated_data.pop("password"))
+            user.save()
+
+            # Create company profile linked to user
+            company = Company.objects.create(user=user, **validated_data)
+
+            return company
+        
+
+    
