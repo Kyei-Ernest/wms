@@ -20,6 +20,8 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api-auth/', include('rest_framework.urls')),
+
     path('api/auth/', include('accounts.urls')),
     path('api/client/', include('client.urls')),
     path('api/company/', include('waste_management_company.urls')),
@@ -27,6 +29,7 @@ urlpatterns = [
     path('api/collector/', include('collector.urls')),
     path('api/zones/', include('zones.urls')),
     path('api/routes/', include('routes.urls')),
+    path('api/collection_record/',include('collection_management.urls')),
 
 
 

@@ -1,8 +1,12 @@
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
 from .views import RouteViewSet, RouteStopViewSet
 
 router = DefaultRouter()
-router.register('', RouteViewSet, basename='routes')
-router.register('route-stops', RouteStopViewSet, basename='route-stops')
+router.register(r'', RouteViewSet, basename='route')
+router.register(r'stops', RouteStopViewSet, basename='stop')
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', include(router.urls)),
+]

@@ -6,6 +6,10 @@ from rest_framework_simplejwt.exceptions import TokenError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
+from collector.models import Collector
+from collector.serializers import CollectorSerializer
+from supervisor.models import Supervisor
+from supervisor.serializers import SupervisorSerializer
 from client.models import Client
 from client.serializers import ClientSerializer
 from waste_management_company.models import Company
@@ -111,18 +115,35 @@ class LoginView(APIView):
 
     def get_profile(self, user):
         role = user.role
+
         if role == "client":
             try:
                 profile = Client.objects.get(user=user)
                 return ClientSerializer(profile).data
             except Client.DoesNotExist:
                 return {}
+
         elif role == "company":
             try:
                 profile = Company.objects.get(user=user)
                 return CompanySerializer(profile).data
             except Company.DoesNotExist:
                 return {}
+
+        elif role == "collector":
+            try:
+                profile = Collector.objects.get(user=user)
+                return CollectorSerializer(profile).data
+            except Collector.DoesNotExist:
+                return {}
+        
+        elif role == "supervisor":
+            try:
+                profile = Supervisor.objects.get(user=user)
+                return SupervisorSerializer(profile).data
+            except Supervisor.DoesNotExist:
+                return {}
+
         return {}
 
 

@@ -56,6 +56,34 @@ class IsClient(BasePermission):
         )
 
 
+class IsCollector(BasePermission):
+    """
+    Allows access only to users with role = 'collector'.
+    """
+    message = "Access restricted to collector accounts only."
+
+    def has_permission(self, request, view):
+        return (
+            request.user 
+            and request.user.is_authenticated 
+            and request.user.role == "collector"
+        )
+
+
+class IsSupervisor(BasePermission):
+    """
+    Allows access only to users with role = 'supervisor'.
+    """
+    message = "Access restricted to supervisor accounts only."
+
+    def has_permission(self, request, view):
+        return (
+            request.user 
+            and request.user.is_authenticated 
+            and request.user.role == "supervisor"
+        )
+
+
 class IsCollectorOrCompanyAdmin(BasePermission):
     """Allow:
     - collectors to view/update their own data
@@ -73,6 +101,7 @@ class IsCollectorOrCompanyAdmin(BasePermission):
 
         return False
     
+
 class IsSupervisorOrCompanyAdmin(BasePermission):
         """Rules:
         - Supervisors can edit their own profile

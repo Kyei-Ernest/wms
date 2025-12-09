@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 
 
 
@@ -32,6 +32,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+
+    objects = UserManager() 
 
     USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["role"]

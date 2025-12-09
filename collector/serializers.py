@@ -4,11 +4,56 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
 
 from .models import Collector
-from waste_management_company.models import Company
-from supervisor.models import Supervisor
 
 User = get_user_model()
 
+class CollectorSerializer(serializers.ModelSerializer):
+    # User fields
+    #email = serializers.EmailField(source="user.email", read_only=True)
+    #phone_number = serializers.CharField(source="user.phone_number", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    is_active = serializers.BooleanField(source="user.is_active", read_only=True)
+
+    # Company + Supervisor
+    company_name = serializers.CharField(source="Company.company_name", read_only=True)
+    supervisor_name = serializers.SerializerMethodField()
+
+    full_name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Collector
+        fields = [
+            # USER DETAILS
+            "username",
+            "is_active",
+
+            # COLLECTOR DETAILS
+            "first_name",
+            "last_name",
+            "full_name",
+            "company_name",
+            "supervisor_name",
+            "is_private_collector",
+
+            "vehicle_number",
+            "vehicle_type",
+            "assigned_area_zone",
+
+            "employment_type",
+            "daily_wage_or_incentive_rate",
+            "bank_account_details",
+
+            "average_rating",
+            "total_collections",
+
+            "last_known_latitude",
+            "last_known_longitude",
+        ]
+
+    def get_supervisor_name(self, obj):
+        if obj.supervisor:
+            return f"{obj.supervisor.first_name} {obj.supervisor.last_name}"
+        return None
 
 class CollectorCreateSerializer(serializers.ModelSerializer):
     # Incoming user fields

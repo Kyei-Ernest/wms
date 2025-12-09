@@ -1,296 +1,295 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.utils import timezone
-from django.db import transaction
-
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-
-from .models import Route, RouteStop
-from .serializers import (
-    RouteListSerializer,
-    RouteDetailSerializer,
-    RouteCreateSerializer,
-    RouteUpdateSerializer,
-    RouteStopSerializer,
-    RouteStopCreateSerializer,
-    RouteStopUpdateSerializer,
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    OpenApiResponse,
+    OpenApiExample,
 )
 
+from accounts.permissions import IsSupervisor
+from .models import Route, RouteStop
+from .serializers import (
+    RouteSerializer,
+    RouteCreateSerializer,
+    RouteStopSerializer,
+    RouteStatusUpdateSerializer,
+)
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all routes",
+        description="Retrieve a paginated list of all routes with nested stops included.",
+        responses={200: RouteSerializer},
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve a route",
+        description="Get full details of a single route, including stops and analytics.",
+        responses={200: RouteSerializer},
+    ),
+)
 class RouteViewSet(viewsets.ModelViewSet):
     """
-    Manage waste collection routes.
+    ViewSet responsible for managing waste collection routes.
 
-    Key Features:
-    - Create routes with optional stop lists
-    - Retrieve detailed route information including stops
-    - Update route metadata, status, and performance fields
-    - Start and complete real-time route execution
-    - Fetch all stops belonging to a route
+    This class groups all route-related endpoints, including:
+    - Listing routes
+    - Retrieving individual routes
+    - Creating new routes (with or without custom stop input)
+    - Updating route status
+
+    Although this is a ViewSet, each method contains its own endpoint-specific
+    docstring, similar to APIView, for clarity and frontend developer guidance.
     """
 
     queryset = Route.objects.all().select_related(
-        'company', 'zone', 'supervisor__user', 'collector__user'
+        'company', 'zone', 'supervisor', 'collector'
     ).prefetch_related('stops')
+    permission_classes = [IsSupervisor]
 
     def get_serializer_class(self):
-        if self.action == 'list':
-            return RouteListSerializer
-        if self.action == 'retrieve':
-            return RouteDetailSerializer
         if self.action == 'create':
             return RouteCreateSerializer
-        if self.action in ['update', 'partial_update']:
-            return RouteUpdateSerializer
-        return RouteDetailSerializer
+        elif self.action == 'update_status':
+            return RouteStatusUpdateSerializer
+        return RouteSerializer
 
-    # -------------------------------------------
-    # LIST ROUTES
-    # -------------------------------------------
-    @swagger_auto_schema(
-        operation_summary="List all routes",
-        operation_description=(
-            "Returns a list of all waste collection routes in the system. "
-            "Includes basic route metadata such as date, supervisor, collector, status, "
-            "and summary statistics."
-        ),
-        responses={200: RouteListSerializer(many=True)},
-        tags=["Routes"]
-    )
+    # --------------------------
+    # LIST ENDPOINT
+    # --------------------------
     def list(self, request, *args, **kwargs):
+        """
+        list of all routes
+
+        Retrieve a paginated list of all routes.
+        
+        **What this returns**
+        - Basic route metadata (company, supervisor, collector, zone)
+        - Computed analytics (distance, duration, completion percentage)
+        - Nested stops for each route
+        - Filtering and pagination handled by DRF
+
+        **Frontend Usage**
+        - Use this for dashboard displays
+        - Good for showing supervisor route overviews
+        """
         return super().list(request, *args, **kwargs)
 
-    # -------------------------------------------
-    # CREATE ROUTE
-    # -------------------------------------------
-    @swagger_auto_schema(
-        operation_summary="Create a new route",
-        operation_description=(
-            "Creates a new waste collection route. "
-            "You may optionally include a list of stops during creation. "
-            "The route will be initialized with 'draft' status."
-        ),
-        request_body=RouteCreateSerializer,
-        responses={201: RouteDetailSerializer},
-        tags=["Routes"]
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    # -------------------------------------------
-    # RETRIEVE ROUTE DETAILS
-    # -------------------------------------------
-    @swagger_auto_schema(
-        operation_summary="Retrieve route details",
-        operation_description=(
-            "Returns full details of a route including its assigned collector, "
-            "supervisor, zone, company, metadata, and all associated stops."
-        ),
-        responses={200: RouteDetailSerializer},
-        tags=["Routes"]
-    )
+    # --------------------------
+    # RETRIEVE ENDPOINT
+    # --------------------------
     def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a single route.
+
+        Retrieve a single route by its ID.
+
+        **What this returns**
+        - Full route details
+        - Ordered list of stops
+        - Zone, collector, and supervisor info
+        - Route analytics (completion %, distance, estimated time)
+
+        **Frontend Usage**
+        - Use for route detail screens
+        - Needed to render full stop-by-stop maps or collector assignments
+        """
         return super().retrieve(request, *args, **kwargs)
 
-    # -------------------------------------------
-    # UPDATE ROUTE
-    # -------------------------------------------
-    @swagger_auto_schema(
-        operation_summary="Update a route",
-        operation_description=(
-            "Updates route metadata such as timings, status, assigned personnel, "
-            "or additional notes. Does not modify associated stops."
+    # --------------------------
+    # CREATE ENDPOINT
+    # --------------------------
+    @extend_schema(
+        summary="Create a new route",
+        description=(
+            "Supervisor-only endpoint. Creates a new route. "
+            "If no stops are provided, stops are automatically generated "
+            "from clients inside the zone polygon."
         ),
-        request_body=RouteUpdateSerializer,
-        responses={200: RouteDetailSerializer},
-        tags=["Routes"]
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    # -------------------------------------------
-    # START ROUTE
-    # -------------------------------------------
-    @swagger_auto_schema(
-        method='post',
-        operation_summary="Start a route",
-        operation_description=(
-            "Marks the route as 'in_progress' and stores the actual starting timestamp. "
-            "Used when the collector begins the route in real-time."
-        ),
-        responses={200: openapi.Response("Route started successfully")},
-        tags=["Routes"]
-    )
-    @action(detail=True, methods=['post'])
-    def start_route(self, request, pk=None):
-        route = self.get_object()
-        route.status = 'in_progress'
-        route.actual_start = timezone.now()
-        route.save()
-        return Response({"message": "Route started"}, status=200)
-
-    # -------------------------------------------
-    # END ROUTE
-    # -------------------------------------------
-    @swagger_auto_schema(
-        method='post',
-        operation_summary="Complete a route",
-        operation_description=(
-            "Marks a route as 'completed' and sets the actual end timestamp. "
-            "Useful when a collector finishes all route tasks."
-        ),
-        responses={200: openapi.Response("Route completed successfully")},
-        tags=["Routes"]
-    )
-    @action(detail=True, methods=['post'])
-    def end_route(self, request, pk=None):
-        route = self.get_object()
-        route.status = 'completed'
-        route.actual_end = timezone.now()
-        route.save()
-        return Response({"message": "Route completed"}, status=200)
-
-    # -------------------------------------------
-    # LIST ALL STOPS FOR ROUTE
-    # -------------------------------------------
-    @swagger_auto_schema(
-        method='get',
-        operation_summary="List all stops in a route",
-        operation_description=(
-            "Returns all stops associated with a specific route in their defined order. "
-            "Includes coordinates, expected duration, and status for each stop."
-        ),
-        responses={200: RouteStopSerializer(many=True)},
-        tags=["Routes"]
-    )
-    @action(detail=True, methods=['get'])
-    def stops(self, request, pk=None):
-        route = self.get_object()
-        serializer = RouteStopSerializer(route.stops.all(), many=True)
-        return Response(serializer.data, status=200)
-
-
-class RouteStopViewSet(viewsets.ModelViewSet):
-    """
-    Manage stops within routes.
-
-    Key Features:
-    - Create stops with coordinates and timing
-    - Update stop information
-    - Reorder stops within a route
-    - Mark a stop as completed in real-time
-    """
-
-    queryset = RouteStop.objects.all().select_related('route', 'client__user')
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return RouteStopCreateSerializer
-        if self.action in ['update', 'partial_update']:
-            return RouteStopUpdateSerializer
-        return RouteStopSerializer
-
-    # -------------------------------------------
-    # CREATE STOP
-    # -------------------------------------------
-    @swagger_auto_schema(
-        operation_summary="Create a route stop",
-        operation_description=(
-            "Creates a new stop assigned to a specific route. "
-            "Includes GPS coordinates, expected duration, and client details."
-        ),
-        request_body=RouteStopCreateSerializer,
-        responses={201: RouteStopSerializer},
-        tags=["Route Stops"]
+        request=RouteCreateSerializer,
+        responses={201: RouteSerializer},
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        """
+        Create a new route
 
-    # -------------------------------------------
-    # UPDATE STOP
-    # -------------------------------------------
-    @swagger_auto_schema(
-        operation_summary="Update a stop",
-        operation_description=(
-            "Updates metadata of a stop such as its coordinates, expected duration, "
-            "or notes. Useful for route optimization."
+        Create a new route. This endpoint supports two behaviors:
+
+        **1. Manual Stop Input (Supervisor specifies stops)**
+        - Provided stops are validated for:
+          - geographic correctness (inside zone)
+          - correct ordering
+          - valid client association
+        - Returned route includes the stops exactly as provided.
+
+        **2. Automatic Stop Generation**
+        - If no stops are submitted:
+            - System finds all clients whose coordinates lie inside the zone polygon.
+            - Generates stops automatically with:
+              - System-assigned order
+              - Lat/Lon from the client
+              - Initial "pending" status
+            - Computes:
+              - total route distance
+              - estimated duration
+
+        **Frontend Usage**
+        - Use for assigning a collector to a set of clients.
+        - Use for generating routes based on zone boundaries.
+
+        **Returns**
+        `201 Created` with a full serialized route including final stops.
+        """
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        route = serializer.save()
+        return Response(RouteSerializer(route).data, status=status.HTTP_201_CREATED)
+
+    # --------------------------
+    # CUSTOM ACTION: STATUS UPDATE
+    # --------------------------
+    @extend_schema(
+        summary="Update route status",
+        description=(
+            "Supervisor-only endpoint. Allows status transitions with validation rules."
         ),
-        request_body=RouteStopUpdateSerializer,
+        request=RouteStatusUpdateSerializer,
+        responses={
+            200: OpenApiResponse(response=RouteSerializer),
+            400: OpenApiResponse(description="Invalid status transition"),
+        },
+    )
+    @action(detail=True, methods=['patch'], url_path='update-status')
+    def update_status(self, request, pk=None):
+        """
+        Update the route's status
+
+        Update the route's status following strict transition rules:
+
+        **Allowed transitions**
+        - draft → assigned, cancelled
+        - assigned → in_progress, cancelled
+        - in_progress → completed, cancelled
+        - completed → ❌ cannot change
+        - cancelled → ❌ cannot change
+
+        **Validation**
+        - Invalid transitions return HTTP 400.
+        - Serializer handles the business logic.
+
+        **Frontend Usage**
+        - Use for workflow progression (assign → start → complete).
+        - UI should grey out invalid transitions to prevent user mistakes.
+
+        **Returns**
+        The updated route serialized using `RouteSerializer`.
+        """
+        route = self.get_object()
+        serializer = RouteStatusUpdateSerializer(route, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(RouteSerializer(route).data)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all route stops",
+        description="Retrieve all stops across all routes with client location details.",
         responses={200: RouteStopSerializer},
-        tags=["Route Stops"]
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve a route stop",
+        description="Get full details of a single stop, including client and location.",
+        responses={200: RouteStopSerializer},
+    ),
+)
+class RouteStopViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing individual route stops.
+    
+    This includes:
+    - Listing all stops
+    - Retrieving single stops
+    - Adding new stops to a route
 
-    # -------------------------------------------
-    # REORDER STOPS
-    # -------------------------------------------
-    reorder_schema = openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'route_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-            'order': openapi.Schema(
-                type=openapi.TYPE_ARRAY,
-                items=openapi.Items(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'stop_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                        'order': openapi.Schema(type=openapi.TYPE_INTEGER),
-                    }
-                )
-            )
-        }
-    )
+    Each method contains an APIView-style endpoint-specific docstring.
+    """
 
-    @swagger_auto_schema(
-        method='post',
-        operation_summary="Reorder route stops",
-        operation_description=(
-            "Changes the order of multiple stops within a route. "
-            "Takes a list of stop IDs with their new order positions."
+    queryset = RouteStop.objects.all().select_related('route', 'client')
+    serializer_class = RouteStopSerializer
+    permission_classes = [IsSupervisor]
+
+    # --------------------------
+    # LIST ENDPOINT
+    # --------------------------
+    def list(self, request, *args, **kwargs):
+        """
+        List all the stops across the system
+
+        Fetch all stops across the system.
+
+        **What this returns**
+        - Each stop's client
+        - Coordinates
+        - Order in route
+        - Status
+        - Parent route ID
+
+        **Frontend Usage**
+        - Admin tables
+        - Debug screens
+        - Supervisor analytics
+        """
+        return super().list(request, *args, **kwargs)
+
+    # --------------------------
+    # RETRIEVE ENDPOINT
+    # --------------------------
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve detailed information about a specific route stop.
+
+        Retrieve detailed information about a specific route stop.
+
+        Includes:
+        - client info
+        - lat/lon coordinates
+        - assigned route
+        - stop order
+        - expected minutes (optional)
+        """
+        return super().retrieve(request, *args, **kwargs)
+
+    # --------------------------
+    # CREATE ENDPOINT
+    # --------------------------
+    @extend_schema(
+        summary="Create a new route stop",
+        description=(
+            "Supervisor-only endpoint. Creates a new stop tied to a route. "
+            "Coordinates must fall inside the route’s zone polygon."
         ),
-        request_body=reorder_schema,
-        responses={200: openapi.Response("Stop order updated successfully")},
-        tags=["Route Stops"]
+        request=RouteStopSerializer,
+        responses={201: RouteStopSerializer},
     )
-    @action(detail=False, methods=['post'])
-    @transaction.atomic
-    def reorder(self, request):
-        route_id = request.data.get("route_id")
-        order_list = request.data.get("order")
+    def perform_create(self, serializer):
+        """
+        Create a new stop inside a route.
 
-        if not route_id or not order_list:
-            return Response(
-                {"error": "route_id and order list required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
-        for item in order_list:
-            stop = RouteStop.objects.get(stop_id=item['stop_id'], route_id=route_id)
-            stop.order = item['order']
-            stop.save()
+        Create a new stop inside a route.
 
-        return Response({"message": "Stop order updated"}, status=200)
+        **Validation**
+        - Serializer ensures coordinates lie inside the route's zone polygon.
+        - Ensures that the client exists.
+        - Ensures correct ordering (if enforced).
 
-    # -------------------------------------------
-    # COMPLETE STOP
-    # -------------------------------------------
-    @swagger_auto_schema(
-        method='post',
-        operation_summary="Mark stop as completed",
-        operation_description=(
-            "Marks a stop as completed and sets the actual completion timestamp. "
-            "Used by collectors during real-time waste pickup."
-        ),
-        responses={200: openapi.Response("Stop marked completed")},
-        tags=["Route Stops"]
-    )
-    @action(detail=True, methods=['post'])
-    def complete(self, request, pk=None):
-        stop = self.get_object()
-        stop.status = 'completed'
-        stop.actual_end = timezone.now()
-        stop.save()
-        return Response({"message": "Stop completed"}, status=200)
+        **Frontend Usage**
+        - Adding extra visits after route creation.
+        - Manual insertion of emergency stops.
+
+        **Returns**
+        A serialized route stop with all validated fields.
+        """
+        serializer.save()

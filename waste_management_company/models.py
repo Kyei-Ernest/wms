@@ -44,7 +44,7 @@ class Company(models.Model):
         null=True,
         blank=True
     )
-
+ 
    
     def clean(self):
         if self.closing_time <= self.opening_time:

@@ -56,7 +56,7 @@ class Zone(models.Model):
     )
 
     center_point = gis_models.PointField(
-        null=True,
+        null=False,
         blank=True,
         help_text="Center point of zone (auto-calculated if not provided)"
     )

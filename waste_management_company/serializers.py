@@ -36,6 +36,11 @@ class CompanySerializer(serializers.ModelSerializer):
             "gst_number",
             "logo_url",
             "weighing_system",
+            "working_days",
+            "opening_time",
+            "closing_time",
+            "price_min",
+            "price_max",
             "incentive_per_100_percent_route",
             "complaint_resolution_sla",
             "total_producers",
@@ -43,6 +48,10 @@ class CompanySerializer(serializers.ModelSerializer):
             "operational_cities",
         ]
 
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = '__all__'
 
 class CompanyCreateSerializer(serializers.Serializer):
     # USER FIELDS

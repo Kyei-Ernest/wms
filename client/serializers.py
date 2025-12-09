@@ -125,7 +125,7 @@ class ClientUpdateSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(source="user.is_active")
     class Meta:
         model = Client
-        fields = [
+        fields = ["first_name","last_name",
             "alternate_phone", "address_line1", "landmark",
             "area_zone", "city", "latitude", "longitude",
             "preferred_collection_time", "is_active",

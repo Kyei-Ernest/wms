@@ -6,6 +6,18 @@ from accounts.models import User
 from .models import Supervisor
 
 
+class SupervisorSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Supervisor
+        fields = ("first_name",
+            "last_name",
+            "company_username",
+            "assigned_areas",
+            "team_size",
+            "photo_url",
+            )
+
 class SupervisorCreateSerializer(serializers.ModelSerializer):
     
     email = serializers.EmailField(
@@ -71,7 +83,6 @@ class SupervisorCreateSerializer(serializers.ModelSerializer):
         )
 
         return supervisor
-
 
 
 class SupervisorListSerializer(serializers.ModelSerializer):

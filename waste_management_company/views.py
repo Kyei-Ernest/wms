@@ -88,6 +88,32 @@ class CompanyRegisterView(APIView):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
+
+class CompanyListView(APIView):
+    """
+    List all companies in the system.
+    Public endpoint — no authentication needed.
+    """
+    authentication_classes = []  
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(
+        tags=TAGS,
+        operation_summary="List all companies",
+        operation_id="company_list",
+        responses={
+            200: openapi.Response(
+                description="List of companies",
+                schema=CompanySerializer(many=True)
+            )
+        }
+    )
+    def get(self, request):
+        companies = Company.objects.all()
+        serializer = CompanySerializer(companies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
 # ---------------------------
 # Company profile (GET + UPDATE)
 # ---------------------------

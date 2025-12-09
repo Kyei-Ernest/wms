@@ -4,7 +4,7 @@ from .views import (
 )
 
 urlpatterns = [
-    path("", ZoneListView.as_view(), name="zone-list"),
+    path("list/", ZoneListView.as_view(), name="zone-list"),
     path("create/", ZoneCreateView.as_view(), name="zone-create"),
     path("<int:zone_id>/", ZoneDetailView.as_view(), name="zone-detail"),
     path("<int:zone_id>/update/", ZoneUpdateView.as_view(), name="zone-update"),

@@ -1,7 +1,7 @@
 from django.db import models
 from decimal import Decimal
 from django.core.validators import MinValueValidator
-
+from django.contrib.gis.db import models as gis_models
 
 from django.contrib.auth import get_user_model
 
@@ -31,6 +31,13 @@ class Client(models.Model):
 
     segregation_compliance_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     registration_date = models.DateTimeField(auto_now_add=True)
+    location = gis_models.PointField(srid=4326, null=True, blank=True, geography=True)  # Add this
+
+    def save(self, *args, **kwargs):
+        if self.latitude is not None and self.longitude is not None:
+            from django.contrib.gis.geos import Point
+            self.location = Point(float(self.longitude), float(self.latitude))
+        super().save(*args, **kwargs)
 
 
 """
