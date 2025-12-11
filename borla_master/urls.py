@@ -4,11 +4,13 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
+
+
 schema_view = get_schema_view(
    openapi.Info(
-      title="Borla-Master(Waste Management System)",
+      title="Borla Tracker(Waste Management System)",
       default_version='v1',
-      description="API documentation for the Waste Management System",
+      description="API documentation for the Borla Tracker (Waste Management System)",
       contact=openapi.Contact(email="ernestkyei101@gmail.com"),
    ),
    public=True,
@@ -30,6 +32,7 @@ urlpatterns = [
     path('api/zones/', include('zones.urls')),
     path('api/routes/', include('routes.urls')),
     path('api/collection_record/',include('collection_management.urls')),
+    path('api/on-demand-requests/', include('on_demand.urls')),
 
 
 
@@ -37,4 +40,8 @@ urlpatterns = [
     path('api/docs/swagger(<format>\.json|\.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('api/docs/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('api/docs/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+
+    # JSON/YAML schema
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    
 ]

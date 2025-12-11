@@ -7,25 +7,20 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Company
 from .serializers import CompanyCreateSerializer, CompanySerializer
 
-# ---------------------------
+
 # JWT tokens serializer
-# ---------------------------
 class TokensSerializer(serializers.Serializer):
     refresh = serializers.CharField()
     access = serializers.CharField()
 
 
-# ---------------------------
 # Wrapper serializer for Swagger
-# ---------------------------
 class CompanyWithTokensSerializer(serializers.Serializer):
     company = CompanySerializer()
     tokens = TokensSerializer()
 
 
-# ---------------------------
 # Error responses
-# ---------------------------
 error_400 = openapi.Response(
     description="Bad Request",
     examples={"application/json": {"phone_number": ["A company with this phone number already exists."]}}
@@ -38,9 +33,7 @@ error_404 = openapi.Response(
 TAGS = ["Companies"]
 
 
-# ---------------------------
 # Helper: Generate JWT tokens
-# ---------------------------
 def generate_tokens(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -49,9 +42,7 @@ def generate_tokens(user):
     }
 
 
-# ---------------------------
 # Company registration
-# ---------------------------
 class CompanyRegisterView(APIView):
     """
     Register a new company account.
@@ -88,7 +79,6 @@ class CompanyRegisterView(APIView):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
-
 class CompanyListView(APIView):
     """
     List all companies in the system.
@@ -114,9 +104,7 @@ class CompanyListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     
-# ---------------------------
 # Company profile (GET + UPDATE)
-# ---------------------------
 class CompanyProfileView(APIView):
     """
     Retrieve or update the authenticated company's profile.

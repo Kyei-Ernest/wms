@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import CollectionRecord
 from django.utils import timezone
+from .models import CollectionRecord
 
 
 class CollectionRecordListSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class CollectionRecordListSerializer(serializers.ModelSerializer):
     route_id = serializers.IntegerField(source='route.route_id', read_only=True)
     duration_minutes = serializers.SerializerMethodField()
     volume_description = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = CollectionRecord
         fields = [
@@ -37,10 +37,13 @@ class CollectionRecordListSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['collection_id', 'created_at', 'collected_at']
-    
+
     def get_duration_minutes(self, obj):
+        # Prefer stored duration_minutes; fall back to computed for legacy data
+        if obj.duration_minutes is not None:
+            return obj.duration_minutes
         return obj.get_duration_minutes()
-    
+
     def get_volume_description(self, obj):
         return obj.get_volume_description()
 
@@ -59,7 +62,7 @@ class CollectionRecordDetailSerializer(serializers.ModelSerializer):
     duration_minutes = serializers.SerializerMethodField()
     volume_description = serializers.SerializerMethodField()
     location_verified = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = CollectionRecord
         fields = [
@@ -88,8 +91,8 @@ class CollectionRecordDetailSerializer(serializers.ModelSerializer):
             'photo_after',
             'segregation_score',
             'status',
-            'gps_latitude',
-            'gps_longitude',
+            'latitude',
+            'longitude',
             'notes',
             'duration_minutes',
             'volume_description',
@@ -103,13 +106,15 @@ class CollectionRecordDetailSerializer(serializers.ModelSerializer):
             'updated_at',
             'collected_at',
         ]
-    
+
     def get_duration_minutes(self, obj):
+        if obj.duration_minutes is not None:
+            return obj.duration_minutes
         return obj.get_duration_minutes()
-    
+
     def get_volume_description(self, obj):
         return obj.get_volume_description()
-    
+
     def get_location_verified(self, obj):
         return obj.verify_location()
 
@@ -134,50 +139,53 @@ class CollectionRecordCreateSerializer(serializers.ModelSerializer):
             'waste_type',
             'photo_before',
             'segregation_score',
-            'status',
-            'gps_latitude',
-            'gps_longitude',
+            'status',            # pending, in_progress, completed, skipped, cancelled, rejected
+            'latitude',
+            'longitude',
             'notes',
         ]
-    
+
     def validate(self, data):
-        """Custom validation"""
-        # If route is provided, collection_type should be 'scheduled'
+        # Route linkage implies scheduled
         if data.get('route') and data.get('collection_type') != 'scheduled':
-            raise serializers.ValidationError(
-                "Collections linked to routes must be 'scheduled' type"
-            )
-        
-        # Ensure collector is provided (unless status is 'pending')
+            raise serializers.ValidationError("Collections linked to routes must be 'scheduled' type")
+
+        # Require collector for any non-pending status
         if data.get('status') != 'pending' and not data.get('collector'):
-            raise serializers.ValidationError(
-                "Collector is required for non-pending collections"
-            )
-        
-        # If status is 'collected', ensure we have waste data
-        if data.get('status') == 'collected':
+            raise serializers.ValidationError("Collector is required for non-pending collections")
+
+        # If completed, ensure waste data and evidence
+        if data.get('status') == 'completed':
             if data.get('bag_count', 0) == 0 and not data.get('bin_size_liters'):
                 raise serializers.ValidationError(
-                    "Either bag_count or bin_size_liters is required for collected status"
+                    "Either bag_count or bin_size_liters is required for completed status"
                 )
-        
+            if not data.get('photo_before') and not data.get('segregation_score'):
+                # You can choose photo_after instead; tweak to your policy
+                raise serializers.ValidationError(
+                    "At least one evidence field (photo_before or segregation_score) is required for completed status"
+                )
+
         return data
-    
+
     def create(self, validated_data):
-        """Create collection and link to route stop if applicable"""
         route_stop = validated_data.get('route_stop')
         collection = CollectionRecord.objects.create(**validated_data)
-        
-        # Update route stop status if linked
+
+        # Sync RouteStop status if linked
         if route_stop:
-            if collection.status == 'collected':
+            status = collection.status
+            if status == 'completed':
                 route_stop.status = 'completed'
-            elif collection.status in ['missed', 'skipped']:
-                route_stop.status = 'skipped'
-            elif collection.status == 'rejected':
-                route_stop.status = 'failed'
+                route_stop.actual_end = timezone.now()
+            elif status in ['skipped', 'cancelled', 'rejected']:
+                # Map rejected to skipped or a dedicated status if your RouteStop supports it
+                route_stop.status = 'skipped' if status in ['skipped', 'rejected'] else 'cancelled'
+            elif status == 'in_progress':
+                route_stop.status = 'in_progress'
+                route_stop.actual_start = route_stop.actual_start or timezone.now()
             route_stop.save()
-        
+
         return collection
 
 
@@ -198,80 +206,76 @@ class CollectionRecordUpdateSerializer(serializers.ModelSerializer):
             'photo_before',
             'photo_after',
             'segregation_score',
-            'status',
-            'gps_latitude',
-            'gps_longitude',
+            'status',   # pending, in_progress, completed, skipped, cancelled, rejected
+            'latitude',
+            'longitude',
             'notes',
         ]
-    
+
     def validate_status(self, value):
-        """Validate status transitions"""
         instance = self.instance
         if instance:
-            # Can't change from 'collected' back to 'pending'
-            if instance.status == 'collected' and value == 'pending':
-                raise serializers.ValidationError(
-                    "Cannot change status from 'collected' back to 'pending'"
-                )
-            
-            # Can't change from 'collected' to 'missed'
-            if instance.status == 'collected' and value in ['missed', 'skipped']:
-                raise serializers.ValidationError(
-                    "Cannot change collected items to missed/skipped"
-                )
-        
+            # No reverting from completed to pending/in_progress
+            if instance.status == 'completed' and value in ['pending', 'in_progress']:
+                raise serializers.ValidationError("Cannot revert a completed collection to pending/in_progress")
+
+            # Completed cannot become skipped/cancelled/rejected
+            if instance.status == 'completed' and value in ['skipped', 'cancelled', 'rejected']:
+                raise serializers.ValidationError("Cannot change a completed collection to skipped/cancelled/rejected")
+
         return value
-    
+
     def validate(self, data):
-        """Custom validation for updates"""
         instance = self.instance
         new_status = data.get('status', instance.status)
-        
-        # If changing to 'collected', ensure we have required data
-        if new_status == 'collected':
+
+        # If moving to completed, ensure data integrity
+        if new_status == 'completed':
             bag_count = data.get('bag_count', instance.bag_count)
             bin_size = data.get('bin_size_liters', instance.bin_size_liters)
-            
-            if bag_count == 0 and not bin_size:
+            if (bag_count or 0) == 0 and not bin_size:
                 raise serializers.ValidationError(
-                    "Either bag_count or bin_size_liters is required for collected status"
+                    "Either bag_count or bin_size_liters is required for completed status"
                 )
-            
-            # Should have at least one photo
+
             photo_before = data.get('photo_before', instance.photo_before)
             photo_after = data.get('photo_after', instance.photo_after)
-            
-            if not photo_before and not photo_after:
+            segregation_score = data.get('segregation_score', instance.segregation_score)
+            if not photo_before and not photo_after and segregation_score is None:
                 raise serializers.ValidationError(
-                    "At least one photo (before or after) is required for collected status"
+                    "Provide at least one evidence: photo_before, photo_after, or segregation_score"
                 )
-        
+
         return data
-    
+
     def update(self, instance, validated_data):
-        """Update collection and sync with route stop"""
         old_status = instance.status
         new_status = validated_data.get('status', old_status)
-        
-        # Update the collection
+
+        # Apply updates
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
+        # If collection_end set, ensure duration_minutes saved by model's save()
         instance.save()
-        
-        # Update linked route stop if status changed
+
+        # Sync RouteStop if linked and status changed
         if old_status != new_status and instance.route_stop:
             route_stop = instance.route_stop
-            
-            if new_status == 'collected':
+
+            if new_status == 'completed':
                 route_stop.status = 'completed'
                 route_stop.actual_end = timezone.now()
-            elif new_status in ['missed', 'skipped']:
+            elif new_status == 'in_progress':
+                route_stop.status = 'in_progress'
+                route_stop.actual_start = route_stop.actual_start or timezone.now()
+            elif new_status in ['skipped', 'rejected']:
                 route_stop.status = 'skipped'
-            elif new_status == 'rejected':
-                route_stop.status = 'failed'
-            
+            elif new_status == 'cancelled':
+                route_stop.status = 'cancelled'
+
             route_stop.save()
-        
+
         return instance
 
 
@@ -281,33 +285,32 @@ class CollectionRecordBulkCreateSerializer(serializers.Serializer):
     """
     route_id = serializers.IntegerField()
     collections = CollectionRecordCreateSerializer(many=True)
-    
+
     def validate_route_id(self, value):
-        """Ensure route exists"""
         from routes.models import Route
         try:
             Route.objects.get(route_id=value)
         except Route.DoesNotExist:
             raise serializers.ValidationError("Route does not exist")
         return value
-    
+
     def create(self, validated_data):
-        """Bulk create collections for a route"""
         from routes.models import Route
-        
         route = Route.objects.get(route_id=validated_data['route_id'])
         collections_data = validated_data['collections']
-        
+
         created_collections = []
         for collection_data in collections_data:
             collection_data['route'] = route
             collection_data['collection_type'] = 'scheduled'
-            
+            # Default initial status for scheduled items
+            collection_data.setdefault('status', 'pending')
+
             serializer = CollectionRecordCreateSerializer(data=collection_data)
-            if serializer.is_valid(raise_exception=True):
-                collection = serializer.save()
-                created_collections.append(collection)
-        
+            serializer.is_valid(raise_exception=True)
+            collection = serializer.save()
+            created_collections.append(collection)
+
         return created_collections
 
 
@@ -316,9 +319,10 @@ class CollectionRecordStatsSerializer(serializers.Serializer):
     Serializer for collection statistics
     """
     total_collections = serializers.IntegerField()
-    collected = serializers.IntegerField()
-    missed = serializers.IntegerField()
+    completed = serializers.IntegerField()
+    skipped = serializers.IntegerField()
     pending = serializers.IntegerField()
+    cancelled = serializers.IntegerField()
     rejected = serializers.IntegerField()
     total_bags = serializers.IntegerField()
     avg_segregation_score = serializers.FloatField()

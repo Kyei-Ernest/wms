@@ -1,3 +1,6 @@
+from datetime import timezone
+from collection_management.models import CollectionRecord
+from collection_management.serializers import CollectionRecordListSerializer
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -8,7 +11,7 @@ from drf_spectacular.utils import (
     OpenApiExample,
 )
 
-from accounts.permissions import IsSupervisor
+from accounts.permissions import IsCollector, IsSupervisor
 from .models import Route, RouteStop
 from .serializers import (
     RouteSerializer,
@@ -55,9 +58,7 @@ class RouteViewSet(viewsets.ModelViewSet):
             return RouteStatusUpdateSerializer
         return RouteSerializer
 
-    # --------------------------
-    # LIST ENDPOINT
-    # --------------------------
+    
     def list(self, request, *args, **kwargs):
         """
         list of all routes
@@ -76,9 +77,7 @@ class RouteViewSet(viewsets.ModelViewSet):
         """
         return super().list(request, *args, **kwargs)
 
-    # --------------------------
-    # RETRIEVE ENDPOINT
-    # --------------------------
+    
     def retrieve(self, request, *args, **kwargs):
         """
         Retrieve a single route.
@@ -97,9 +96,7 @@ class RouteViewSet(viewsets.ModelViewSet):
         """
         return super().retrieve(request, *args, **kwargs)
 
-    # --------------------------
-    # CREATE ENDPOINT
-    # --------------------------
+    
     @extend_schema(
         summary="Create a new route",
         description=(
@@ -146,9 +143,7 @@ class RouteViewSet(viewsets.ModelViewSet):
         route = serializer.save()
         return Response(RouteSerializer(route).data, status=status.HTTP_201_CREATED)
 
-    # --------------------------
-    # CUSTOM ACTION: STATUS UPDATE
-    # --------------------------
+   
     @extend_schema(
         summary="Update route status",
         description=(
@@ -190,6 +185,203 @@ class RouteViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(RouteSerializer(route).data)
+    
+
+    @extend_schema(
+        summary="Start a route",
+        description=(
+            "Starts a specific route if it is currently in either 'assigned' or 'draft' status. "
+            "This action sets the actual start time, moves the route into 'in_progress', "
+            "and updates all stops from 'pending' to 'in_progress'.\n\n"
+            "**Permissions:**\n"
+            "- Only users allowed by `CanStartRoute` can start the route.\n"
+            "- Typically: supervisor or the assigned collector."
+        ),
+        responses={
+            200: OpenApiResponse(
+                response=RouteSerializer,
+                description="Route successfully started."
+            ),
+            400: OpenApiResponse(
+                description="Invalid status transition. Route cannot be started."
+            ),
+            403: OpenApiResponse(
+                description="Not authorized to start this route."
+            ),
+        },
+        examples=[
+            {
+                "name": "Valid start request",
+                "value": {},
+                "request_only": True
+            },
+            {
+                "name": "Successful start response",
+                "value": {
+                    "route_id": 101,
+                    "status": "in_progress",
+                    "actual_start": "2025-12-09T14:30:15Z",
+                    "stops": [
+                        {"stop_id": 1, "status": "in_progress"},
+                        {"stop_id": 2, "status": "in_progress"}
+                    ]
+                },
+                "response_only": True
+            }
+        ]
+    )
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='start',
+        permission_classes=[IsCollector]   
+    )
+    def start_route(self, request, pk=None):
+        """
+        Start a specific route.
+
+        This endpoint allows authorized users to initiate a waste collection route.
+        Once called, the following operations occur:
+
+        1. **Validation**  
+        - The route must currently be in either `"assigned"` or `"draft"` status.
+        - Any other state (e.g., `in_progress`, `completed`, `cancelled`) will
+            result in a `400 Bad Request`.
+
+        2. **Route Updates**  
+        - Sets `actual_start` to the current timestamp.
+        - Changes the route status to `"in_progress"`.
+
+        3. **Stop Updates**  
+        - All stops with status `"pending"` are automatically updated to `"in_progress"`.
+
+        **Permissions:**  
+        This action uses a dedicated permission class (`CanStartRoute`), meaning it
+        applies *only to this endpoint* and not the entire ViewSet.
+
+        Returns the complete serialized route after updates.
+        """
+        route = self.get_object()
+
+        # Validate status transition
+        if route.status not in ["assigned", "draft"]:
+            return Response(
+                {"error": "Route cannot be started from the current status."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Perform state update
+        route.actual_start = timezone.now()
+        route.status = "in_progress"
+        route.save(update_fields=["actual_start", "status"])
+
+        # Update pending stops
+        route.stops.filter(status="pending").update(status="in_progress")
+
+        return Response(RouteSerializer(route).data, status=status.HTTP_200_OK)
+
+
+    @extend_schema(
+    summary="Automatically close a completed route",
+    description=(
+        "Supervisor-only endpoint. This action finalizes a route **only if all stops "
+        "on the route have already been completed**. The system performs several "
+        "automatic tasks:\n\n"
+        "1. Validates that no stop is still in `pending` or `in_progress`.\n"
+        "2. Marks the route as `completed` and records the actual end time.\n"
+        "3. Calculates incentives for the collector using a base rate per stop and a "
+        "distance-based bonus.\n"
+        "4. Updates the collector’s incentive balance.\n"
+        "5. Returns a detailed summary including distance, total stops, completion "
+        "time, and incentive awarded."
+    ),
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            description="Route closed successfully with auto-calculated metrics.",
+            examples=[
+                OpenApiExample(
+                    "Successful auto-close",
+                    value={
+                        "message": "Route auto-closed",
+                        "summary": {
+                            "route_id": 101,
+                            "distance_km": 12.4,
+                            "stops_completed": 18,
+                            "time_spent_minutes": 95.0,
+                            "incentive_awarded": 220.5
+                        },
+                    },
+                )
+            ],
+        ),
+        400: OpenApiResponse(
+            description="Cannot close the route because one or more stops are unfinished.",
+            examples=[
+                OpenApiExample(
+                    "Unfinished stops error",
+                    value={"error": "Route cannot be closed until all stops are completed."},
+                )
+            ],
+        ),
+    },
+    )
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='auto-close',
+        #permission_classes=[IsSupervisor]  
+    )
+    def auto_close(self, request, pk=None):
+        """
+        Automatically finalizes a route after all stops are completed.
+
+        This endpoint ensures all route stops have reached a `completed` state
+        before closing the route. It then marks the route as completed, sets the
+        actual end time, calculates incentives for the collector using a combination
+        of per-stop and distance-based bonuses, updates the collector’s incentive
+        balance, and returns a detailed route summary.
+        """
+        route = self.get_object()
+
+        # 1. Ensure all stops are completed
+        if route.stops.filter(status__in=["pending", "in_progress"]).exists():
+            return Response(
+                {"error": "Route cannot be closed until all stops are completed."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2. Update route status
+        route.status = "completed"
+        route.actual_end = timezone.now()
+        route.save(update_fields=["status", "actual_end"])
+
+        # 3. Calculate incentives
+        completed_stops = route.stops.filter(status="completed").count()
+        base_rate = 10
+        bonus_rate = 0.5
+        incentive = (completed_stops * base_rate) + (route.total_distance_km * bonus_rate)
+
+        collector = route.collector
+        collector.incentive_balance = getattr(collector, "incentive_balance", 0) + incentive
+        collector.save(update_fields=["incentive_balance"])
+
+        # 4. Summary
+        summary = {
+            "route_id": route.route_id,
+            "distance_km": route.total_distance_km,
+            "stops_completed": completed_stops,
+            "time_spent_minutes": (
+                (route.actual_end - route.actual_start).total_seconds() / 60
+                if route.actual_start else None
+            ),
+            "incentive_awarded": incentive,
+        }
+
+        return Response(
+            {"message": "Route auto-closed", "summary": summary},
+            status=status.HTTP_200_OK
+        )
 
 
 @extend_schema_view(
@@ -293,3 +485,172 @@ class RouteStopViewSet(viewsets.ModelViewSet):
         A serialized route stop with all validated fields.
         """
         serializer.save()
+
+
+
+    @extend_schema(
+        summary="Complete a route stop",
+        description=(
+            "Marks a specific stop as completed and automatically generates a collection record. "
+            "This action can only be performed when the stop is currently in the `in_progress` state.\n\n"
+            "**What this endpoint does:**\n"
+            "1. Validates the stop state.\n"
+            "2. Marks the stop as `completed` and records the actual end time.\n"
+            "3. Creates a `CollectionRecord` for tracking the waste collection event.\n"
+            "4. Updates the parent route’s completion percentage.\n"
+            "5. Updates collector performance stats.\n"
+            "6. Optionally recalculates the client’s segregation compliance score.\n\n"
+            "**Permissions:**\n"
+            "Use a custom permission class if only collectors should complete stops.\n\n"
+            "**Typical Use Case:**\n"
+            "Collectors call this endpoint after finishing service at a client location, "
+            "submitting details like bag count, bin size, waste type, and segregation score."
+        ),
+        request={
+            "application/json": OpenApiExample(
+                "Complete stop payload",
+                value={
+                    "bag_count": 3,
+                    "bin_size_liters": 120,
+                    "waste_type": "mixed",
+                    "segregation_score": 75
+                },
+                request_only=True,
+            )
+        },
+        responses={
+            201: OpenApiResponse(
+                response=CollectionRecordListSerializer,
+                description="Stop completed and collection record created."
+            ),
+            400: OpenApiResponse(description="Stop is not in progress."),
+            403: OpenApiResponse(description="Permission denied."),
+        },
+        examples=[
+            OpenApiExample(
+                "Successful completion response",
+                value={
+                    "record_id": 501,
+                    "client": 2001,
+                    "collector": 45,
+                    "route": 101,
+                    "collection_type": "regular",
+                    "scheduled_date": "2025-12-09",
+                    "collected_at": "2025-12-09T16:24:55Z",
+                    "bag_count": 3,
+                    "bin_size_liters": 120,
+                    "waste_type": "mixed",
+                    "segregation_score": 75,
+                    "status": "completed"
+                },
+                response_only=True,
+            )
+        ]
+    )
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='complete',
+        permission_classes=[IsCollector]  
+    )
+    def complete_stop(self, request, pk=None):
+        """
+        Complete a waste collection stop.
+
+        This endpoint finalizes a specific stop within a route and logs a full
+        collection record. It is typically called by the collector after servicing
+        a client's location.
+
+        **Workflow executed by this endpoint:**
+
+        1. **Status Validation**  
+        Ensures the stop is currently in the `in_progress` state.  
+        Stops in any other state (`pending`, `completed`, `cancelled`) will
+        return a `400 Bad Request`.
+
+        2. **Stop Update**  
+        - Sets the stop status to `completed`.  
+        - Records the `actual_end` timestamp.
+
+        3. **Collection Record Creation**  
+        Captures essential waste collection details such as:  
+        - bag count  
+        - bin size  
+        - waste type  
+        - collector  
+        - route  
+        - segregation score  
+        These records are used for analytics and client/collector evaluation.
+
+        4. **Route Progress Update**  
+        Recalculates the route's completion percentage based on the number of
+        completed stops.
+
+        5. **Collector Stats Update**  
+        Increments long-term performance metrics such as total collections.
+
+        6. **Client Segregation Compliance**  
+        If provided, updates the client's segregation compliance percentage using
+        a rolling average.
+
+        **Returns:**  
+        A serialized `CollectionRecord` representing the completed collection event,
+        along with all associated details.
+
+        **Response Status:**  
+        - `201 Created` on success  
+        - `400` if the stop is not in progress  
+        - `403` if permissions are applied and user is unauthorized
+        """
+        stop = self.get_object()
+        route = stop.route
+        collector = route.collector
+        client = stop.client
+
+        if stop.status != "in_progress":
+            return Response(
+                {"error": "Stop must be in progress to complete."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 1. Update stop status
+        stop.status = "completed"
+        stop.actual_end = timezone.now()
+        stop.save(update_fields=["status", "actual_end"])
+
+        # 2. Create CollectionRecord
+        record = CollectionRecord.objects.create(
+            client=client,
+            collector=collector,
+            route=route,
+            collection_type="regular",
+            scheduled_date=route.route_date,
+            collected_at=timezone.now(),
+            bag_count=request.data.get("bag_count", 0),
+            bin_size_liters=request.data.get("bin_size_liters", 0),
+            waste_type=request.data.get("waste_type", "mixed"),
+            status="completed",
+            segregation_score=request.data.get("segregation_score", None),
+        )
+
+        # 3. Update route completion percent
+        total_stops = route.stops.count()
+        completed_stops = route.stops.filter(status="completed").count()
+        route.completion_percent = round((completed_stops / total_stops) * 100, 2)
+        route.save(update_fields=["completion_percent"])
+
+        # 4. Update collector stats
+        collector.total_collections = getattr(collector, "total_collections", 0) + 1
+        collector.save(update_fields=["total_collections"])
+
+        # 5. Update client segregation compliance
+        if record.segregation_score is not None:
+            client.segregation_compliance_percent = (
+                (client.segregation_compliance_percent + record.segregation_score) / 2
+            )
+            client.save(update_fields=["segregation_compliance_percent"])
+
+        return Response(
+            CollectionRecordListSerializer(record).data,
+            status=status.HTTP_201_CREATED
+        )

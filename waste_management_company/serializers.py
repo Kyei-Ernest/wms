@@ -7,34 +7,33 @@ from django.contrib.auth.hashers import make_password
 
 
 
-# USER SERIALIZER (READ-ONLY BASIC DETAILS)
-class UserSerializer(serializers.ModelSerializer):
+
+class CompanySerializer(serializers.ModelSerializer):
+
+    # Flattening user fields
+    username = serializers.CharField(source="user.username", read_only=True)
+    phone_number = serializers.CharField(source="user.phone_number", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    profile_photo = serializers.ImageField(source="user.profile_photo", read_only=True)
+    address = serializers.CharField(source="user.address", read_only=True)
+    is_verified = serializers.BooleanField(source="user.is_verified", read_only=True)
+
     class Meta:
-        model = User
+        model = Company
         fields = [
+            "id",
+
+            # USER FIELDS (flattened)
             "username",
             "phone_number",
             "email",
             "profile_photo",
             "address",
             "is_verified",
-            "created_at",
-        ]
-        read_only_fields = ["username", "created_at", "is_verified"]
 
-
-# COMPANY SERIALIZER (FULL COMPANY DETAILS)
-class CompanySerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Company
-        fields = [
-            "id",
-            "user",
+            # COMPANY FIELDS
             "company_name",
             "gst_number",
-            "logo_url",
             "weighing_system",
             "working_days",
             "opening_time",
@@ -48,10 +47,7 @@ class CompanySerializer(serializers.ModelSerializer):
             "operational_cities",
         ]
 
-class CompanySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Company
-        fields = '__all__'
+
 
 class CompanyCreateSerializer(serializers.Serializer):
     # USER FIELDS
@@ -64,7 +60,6 @@ class CompanyCreateSerializer(serializers.Serializer):
     # COMPANY FIELDS
     company_name = serializers.CharField()
     gst_number = serializers.CharField()
-    logo_url = serializers.URLField(required=False, allow_blank=True)
     #weighing_system = serializers.CharField()
     #incentive_per_100_percent_route = serializers.DecimalField(max_digits=10, decimal_places=2)
     complaint_resolution_sla = serializers.IntegerField()

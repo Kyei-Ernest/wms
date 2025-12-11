@@ -94,11 +94,14 @@ class Route(models.Model):
         else:
             self.status = 'assigned'
 
+    
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # initial save
         self.update_distance_and_duration()
         self.update_completion_status()
         super().save(update_fields=['total_distance_km', 'estimated_duration', 'completion_percent', 'status'])
+
 
 
 class RouteStop(models.Model):

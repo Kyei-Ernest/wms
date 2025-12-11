@@ -11,7 +11,6 @@ class Company(models.Model):
 
     company_name = models.CharField(max_length=255)
     gst_number = models.CharField(max_length=100)  
-    logo_url = models.URLField(blank=True, null=True)
 
     weighing_system = models.CharField(max_length=50)
 
