@@ -4,6 +4,8 @@ from rest_framework.decorators import action
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from rest_framework.exceptions import PermissionDenied
+from accounts.permissions import IsClient
 
 from .models import OnDemandRequest
 from .serializers import (
@@ -357,6 +359,8 @@ class OnDemandRequestViewSet(viewsets.ModelViewSet):
             ValidationError: If required fields are missing or invalid
             PermissionDenied: If user has exceeded request limits
         """
+        if not IsClient().has_permission(request, self):
+            raise PermissionDenied("Only clients can create on-demand requests.")
         return super().create(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -1040,7 +1044,7 @@ class OnDemandRequestViewSet(viewsets.ModelViewSet):
         collector.last_known_latitude = request.data.get("latitude")
         collector.last_known_longitude = request.data.get("longitude")
         collector.save()
-        
+
         serializer = OnDemandRequestUpdateSerializer(
             request_obj, 
             data=request.data, 
