@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'routes',
     'collection_management',
     'on_demand',
+    'scheduled_request'
 ]
 
 

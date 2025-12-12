@@ -14,29 +14,29 @@ class ScheduledRequest(models.Model):
 
     # Core actors
     client = models.ForeignKey(
-        'clients.Client',
+        'client.Client',
         on_delete=models.CASCADE,
         related_name='scheduled_requests'
     )
     company = models.ForeignKey(
-        'companies.Company',
+        'waste_management_company.Company',
         on_delete=models.CASCADE,
         related_name='scheduled_requests'
     )
     collector = models.ForeignKey(
-        'collectors.Collector',
+        'collector.Collector',
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='scheduled_requests'
     )
 
-    # Future-proof: subscription link (optional for now)
+    """# Future-proof: subscription link (optional for now)
     subscription = models.ForeignKey(
         'clients.Subscription',   # you’ll create this later
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='scheduled_requests'
-    )
+    )"""
 
     # Scheduling details
     pickup_date = models.DateField()

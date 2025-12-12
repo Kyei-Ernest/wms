@@ -31,8 +31,9 @@ urlpatterns = [
     path('api/collector/', include('collector.urls')),
     path('api/zones/', include('zones.urls')),
     path('api/routes/', include('routes.urls')),
-    path('api/collection_record/',include('collection_management.urls')),
+    path('api/collection-records/',include('collection_management.urls')),
     path('api/on-demand-requests/', include('on_demand.urls')),
+    path('api/scheduled-requests/', include('scheduled_request.urls')),
 
 
 

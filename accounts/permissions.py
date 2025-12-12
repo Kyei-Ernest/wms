@@ -70,6 +70,43 @@ class IsCollector(BasePermission):
         )
 
 
+class IsPrivateCollector(BasePermission):
+    """
+    Allows access only to users who are collectors
+    AND marked as private collectors.
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+
+        # Ensure the user has a linked collector profile
+        collector = getattr(user, "collector", None)
+        if collector and collector.is_private_collector:
+            return True
+
+        return False
+    
+    
+class IsCompanyCollector(BasePermission):
+    """
+    Allows access only to users who are collectors
+    AND employed by a company (not private).
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+
+        collector = getattr(user, "collector", None)
+        if collector and not collector.is_private_collector:
+            return True
+
+        return False
+    
+
 class IsSupervisor(BasePermission):
     """
     Allows access only to users with role = 'supervisor'.
