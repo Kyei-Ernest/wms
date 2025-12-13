@@ -24,7 +24,9 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS") == "True"
 
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
+CSRF_TRUSTED_ORIGINS = [
+    "https://postumbonal-monatomic-cecelia.ngrok-free.dev",
+]
 
 AUTH_USER_MODEL = "accounts.User"
 

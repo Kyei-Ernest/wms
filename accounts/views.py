@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
+
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
@@ -17,49 +18,143 @@ from waste_management_company.serializers import CompanySerializer
 from accounts.serializers import LoginSerializer, TokenRefreshCustomSerializer
 
 
-# ===========================
-# REUSABLE SCHEMAS
-# ===========================
-error_400 = openapi.Response(
-    description="Bad Request",
-    examples={"application/json": {"error": "Invalid credentials"}}
-)
-error_403 = openapi.Response(
-    description="Forbidden",
-    examples={"application/json": {"detail": "Account is inactive."}}
+# ============================================================
+# ENUMS & COMMON SCHEMAS
+# ============================================================
+
+ROLE_ENUM = openapi.Schema(
+    type=openapi.TYPE_STRING,
+    description="System user role",
+    enum=["client", "company", "collector", "supervisor", "admin"]
 )
 
-# Profile schema (dynamic per role)
-profile_schema = openapi.Schema(
-    type=openapi.TYPE_OBJECT,
-    description="Role-specific profile data (Client or Company)",
-    example={
-        "client": {"user_id": "CLT000001", "city": "Accra", "property_type": "House"},
-        "company": {"company_id": "CMP000001", "company_name": "EcoWaste Ltd"}
+error_400 = openapi.Response(
+    description="Bad Request – validation or authentication error",
+    schema=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            "error": openapi.Schema(type=openapi.TYPE_STRING),
+            "detail": openapi.Schema(type=openapi.TYPE_STRING),
+        }
+    ),
+    examples={
+        "application/json": {
+            "error": "Invalid credentials",
+            "detail": "Phone number, email, or password is incorrect."
+        }
     }
 )
 
-# Full login response schema
+error_403 = openapi.Response(
+    description="Forbidden – account inactive or blocked",
+    schema=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            "detail": openapi.Schema(type=openapi.TYPE_STRING)
+        }
+    ),
+    examples={
+        "application/json": {
+            "detail": "Account is inactive."
+        }
+    }
+)
+
+
+# ============================================================
+# ROLE-SPECIFIC PROFILE SCHEMAS
+# ============================================================
+
+client_profile_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    description="Client profile information",
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+        "city": openapi.Schema(type=openapi.TYPE_STRING),
+        "property_type": openapi.Schema(type=openapi.TYPE_STRING),
+    }
+)
+
+company_profile_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    description="Waste management company profile",
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+        "company_name": openapi.Schema(type=openapi.TYPE_STRING),
+        "registration_number": openapi.Schema(type=openapi.TYPE_STRING),
+    }
+)
+
+collector_profile_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    description="Collector profile information",
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+        "first_name": openapi.Schema(type=openapi.TYPE_STRING),
+        "last_name": openapi.Schema(type=openapi.TYPE_STRING),
+    }
+)
+
+supervisor_profile_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    description="Supervisor profile information",
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+        "company_username": openapi.Schema(type=openapi.TYPE_STRING),
+        "assigned_areas": openapi.Schema(
+            type=openapi.TYPE_ARRAY,
+            items=openapi.Items(type=openapi.TYPE_STRING)
+        ),
+    }
+)
+
+
+# ============================================================
+# LOGIN RESPONSE SCHEMA
+# ============================================================
+
 login_response_schema = openapi.Schema(
     type=openapi.TYPE_OBJECT,
+    description="Successful authentication response",
     properties={
-        "message": openapi.Schema(type=openapi.TYPE_STRING, example="Login successful"),
+        "message": openapi.Schema(
+            type=openapi.TYPE_STRING,
+            example="Login successful"
+        ),
         "user": openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+                "id": openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description="User primary key"
+                ),
                 "phone_number": openapi.Schema(type=openapi.TYPE_STRING),
                 "email": openapi.Schema(type=openapi.TYPE_STRING, nullable=True),
-                "role": openapi.Schema(type=openapi.TYPE_STRING, enum=["client", "company", "collector", "admin"]),
+                "role": ROLE_ENUM,
                 "is_active": openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                "profile": profile_schema
+                "profile": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    description="Role-specific profile data",
+                    oneOf=[
+                        client_profile_schema,
+                        company_profile_schema,
+                        collector_profile_schema,
+                        supervisor_profile_schema,
+                    ]
+                )
             }
         ),
         "tokens": openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "refresh": openapi.Schema(type=openapi.TYPE_STRING),
-                "access": openapi.Schema(type=openapi.TYPE_STRING)
+                "refresh": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="JWT refresh token"
+                ),
+                "access": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="JWT access token"
+                )
             }
         )
     }
@@ -68,16 +163,21 @@ login_response_schema = openapi.Schema(
 TAGS = ["Authentication"]
 
 
-# ===========================
+# ============================================================
 # LOGIN
-# ===========================
+# ============================================================
+
 class LoginView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(
         tags=TAGS,
-        operation_summary="Login with phone/email/ID",
+        operation_summary="Authenticate user",
+        operation_description=(
+            "Authenticates a user using phone number, email, or username "
+            "and returns JWT access & refresh tokens along with role-based profile data."
+        ),
         operation_id="auth_login",
         request_body=LoginSerializer,
         responses={
@@ -89,13 +189,16 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         user = serializer.validated_data["user"]
 
         if not user.is_active:
-            return Response({"detail": "Account is inactive."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Account is inactive."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         refresh = RefreshToken.for_user(user)
-        profile_data = self.get_profile(user)
 
         return Response({
             "message": "Login successful",
@@ -105,7 +208,7 @@ class LoginView(APIView):
                 "email": user.email or None,
                 "role": user.role,
                 "is_active": user.is_active,
-                "profile": profile_data,
+                "profile": self.get_profile(user),
             },
             "tokens": {
                 "refresh": str(refresh),
@@ -114,59 +217,54 @@ class LoginView(APIView):
         }, status=status.HTTP_200_OK)
 
     def get_profile(self, user):
-        role = user.role
+        if user.role == "client":
+            return ClientSerializer(
+                Client.objects.filter(user=user).first()
+            ).data if Client.objects.filter(user=user).exists() else {}
 
-        if role == "client":
-            try:
-                profile = Client.objects.get(user=user)
-                return ClientSerializer(profile).data
-            except Client.DoesNotExist:
-                return {}
+        if user.role == "company":
+            return CompanySerializer(
+                Company.objects.filter(user=user).first()
+            ).data if Company.objects.filter(user=user).exists() else {}
 
-        elif role == "company":
-            try:
-                profile = Company.objects.get(user=user)
-                return CompanySerializer(profile).data
-            except Company.DoesNotExist:
-                return {}
+        if user.role == "collector":
+            return CollectorSerializer(
+                Collector.objects.filter(user=user).first()
+            ).data if Collector.objects.filter(user=user).exists() else {}
 
-        elif role == "collector":
-            try:
-                profile = Collector.objects.get(user=user)
-                return CollectorSerializer(profile).data
-            except Collector.DoesNotExist:
-                return {}
-        
-        elif role == "supervisor":
-            try:
-                profile = Supervisor.objects.get(user=user)
-                return SupervisorSerializer(profile).data
-            except Supervisor.DoesNotExist:
-                return {}
+        if user.role == "supervisor":
+            return SupervisorSerializer(
+                Supervisor.objects.filter(user=user).first()
+            ).data if Supervisor.objects.filter(user=user).exists() else {}
 
         return {}
 
 
-# ===========================
+# ============================================================
 # TOKEN REFRESH
-# ===========================
+# ============================================================
+
 class TokenRefreshView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(
         tags=TAGS,
-        operation_summary="Refresh access token",
+        operation_summary="Refresh JWT tokens",
+        operation_description=(
+            "Generates a new access token using a valid refresh token. "
+            "A new refresh token is returned if rotation is enabled."
+        ),
         operation_id="auth_token_refresh",
         request_body=TokenRefreshCustomSerializer,
         responses={
             200: openapi.Response(
-                "New tokens issued",
+                "Tokens refreshed successfully",
                 openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        "access": openapi.Schema(type=openapi.TYPE_STRING, description="New access token"),
-                        "refresh": openapi.Schema(type=openapi.TYPE_STRING, description="New refresh token (if rotation enabled)")
+                        "access": openapi.Schema(type=openapi.TYPE_STRING),
+                        "refresh": openapi.Schema(type=openapi.TYPE_STRING),
                     }
                 )
             ),
@@ -179,17 +277,23 @@ class TokenRefreshView(APIView):
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
-# ===========================
-# LOGOUT (Blacklist Tokens)
-# ===========================
+# ============================================================
+# LOGOUT
+# ============================================================
+
 logout_request_schema = openapi.Schema(
     type=openapi.TYPE_OBJECT,
     required=["refresh"],
     properties={
-        "refresh": openapi.Schema(type=openapi.TYPE_STRING, description="Refresh token to blacklist"),
-        "access": openapi.Schema(type=openapi.TYPE_STRING, description="Optional: access token to invalidate")
-    },
-    example={"refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.x...", "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.y..."}
+        "refresh": openapi.Schema(
+            type=openapi.TYPE_STRING,
+            description="Refresh token to be blacklisted"
+        ),
+        "access": openapi.Schema(
+            type=openapi.TYPE_STRING,
+            description="Optional access token to invalidate"
+        ),
+    }
 )
 
 class LogoutView(APIView):
@@ -197,34 +301,55 @@ class LogoutView(APIView):
 
     @swagger_auto_schema(
         tags=TAGS,
-        operation_summary="Logout and blacklist tokens",
+        operation_summary="Logout user",
+        operation_description=(
+            "Invalidates the provided refresh token by blacklisting it. "
+            "Optionally invalidates the access token if supported."
+        ),
         operation_id="auth_logout",
         request_body=logout_request_schema,
         responses={
-            200: openapi.Response("Logout successful", openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={"message": openapi.Schema(type=openapi.TYPE_STRING, example="Logout successful. Tokens invalidated.")}
-            )),
-            400: error_400
+            200: openapi.Response(
+                "Logout successful",
+                openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "message": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Logout successful. Tokens invalidated."
+                        )
+                    }
+                )
+            ),
+            400: error_400,
         }
     )
     def post(self, request):
         refresh_token = request.data.get("refresh")
+
         if not refresh_token:
-            return Response({"error": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Refresh token is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             token = RefreshToken(refresh_token)
             token.blacklist()
         except TokenError:
-            return Response({"error": "Invalid or already used refresh token."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid or already blacklisted refresh token."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Optional: blacklist access token (requires custom AccessToken with blacklist support)
         access_token = request.data.get("access")
         if access_token:
             try:
                 AccessToken(access_token).blacklist()
             except Exception:
-                pass  # Ignore if not supported
+                pass
 
-        return Response({"message": "Logout successful. Tokens invalidated."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Logout successful. Tokens invalidated."},
+            status=status.HTTP_200_OK
+        )

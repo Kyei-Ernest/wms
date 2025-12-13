@@ -1,228 +1,161 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Count, Avg, Sum, Q
-from django.utils import timezone
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-
 from .models import CollectionRecord
 from .serializers import (
-    CollectionRecordListSerializer,
-    CollectionRecordDetailSerializer,
+    CollectionRecordSerializer,
     CollectionRecordCreateSerializer,
-    CollectionRecordUpdateSerializer,
-    CollectionRecordBulkCreateSerializer,
-    CollectionRecordStatsSerializer,
 )
+from accounts.permissions import IsClient, IsSupervisor, IsCompanyCollector
 
 
-class CollectionRecordViewSet(viewsets.ModelViewSet):
+class CollectionRecordViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet for managing waste collection records.
+    ViewSet for accessing and managing CollectionRecord data.
 
-    Provides CRUD operations, workflow endpoints (start/complete), bulk creation,
-    and statistics aggregation. All endpoints require authentication.
+    CollectionRecord is the immutable evidence log of a waste collection event.
+    It captures payment info, GPS, photos, waste quantity, and audit data.
+
+    Role-based access:
+    - Clients: can only view their own records and summaries.
+    - Supervisors: can view all records tied to their company routes.
+    - Collectors: can view records they created and update them with evidence.
+
+    Endpoints exposed:
+    - GET /collections/ → list records (scoped by role)
+    - GET /collections/{id}/ → retrieve single record
+    - GET /collections/my_summary/ → client summary stats
+    - GET /collections/my_records/ → client’s own records list
+    - POST /collections/{id}/update_record/ → collector updates evidence/payment
     """
 
-    queryset = CollectionRecord.objects.select_related(
-        'client', 'client__user', 'collector', 'collector__user', 'route', 'route_stop'
-    )
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return CollectionRecordListSerializer
-        elif self.action == 'retrieve':
-            return CollectionRecordDetailSerializer
-        elif self.action == 'create':
-            return CollectionRecordCreateSerializer
-        elif self.action in ['update', 'partial_update']:
-            return CollectionRecordUpdateSerializer
-        return CollectionRecordDetailSerializer
+    queryset = CollectionRecord.objects.all()
+    serializer_class = CollectionRecordSerializer
 
     def get_queryset(self):
         """
-        Filtering supported by query params:
-        - client_id, collector_id, route_id
-        - status, collection_type
-        - start_date & end_date (scheduled_date range)
+        Role-based queryset filtering:
+        - Client → only their own records
+        - Supervisor → all records under their supervised routes
+        - Collector → records they executed
+        - Others → no access
         """
-        qs = super().get_queryset()
-        params = self.request.query_params
+        user = self.request.user
+        if hasattr(user, "client"):
+            return CollectionRecord.objects.filter(client=user.client)
+        elif hasattr(user, "supervisor"):
+            return CollectionRecord.objects.filter(route__supervisor=user.supervisor)
+        elif hasattr(user, "collector"):
+            return CollectionRecord.objects.filter(collector=user.collector)
+        return CollectionRecord.objects.none()
 
-        if client_id := params.get('client_id'):
-            qs = qs.filter(client_id=client_id)
-        if collector_id := params.get('collector_id'):
-            qs = qs.filter(collector_id=collector_id)
-        if route_id := params.get('route_id'):
-            qs = qs.filter(route_id=route_id)
-        if status_param := params.get('status'):
-            qs = qs.filter(status=status_param)
-        if collection_type := params.get('collection_type'):
-            qs = qs.filter(collection_type=collection_type)
-        if params.get('start_date') and params.get('end_date'):
-            qs = qs.filter(scheduled_date__range=[params['start_date'], params['end_date']])
+    @action(detail=False, methods=["get"], permission_classes=[IsClient])
+    def my_summary(self, request):
+        """
+        GET /collections/my_summary/
 
-        return qs
+        Client views aggregated stats of their own collection records.
+        Useful for dashboards showing quick totals.
 
-    # --------------------------
-    # LIST
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="List all collections",
-        operation_description="Retrieve a list of all collection records with optional filtering.",
-        manual_parameters=[
-            openapi.Parameter('client_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
-            openapi.Parameter('collector_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
-            openapi.Parameter('route_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
-            openapi.Parameter('status', openapi.IN_QUERY, type=openapi.TYPE_STRING),
-            openapi.Parameter('collection_type', openapi.IN_QUERY, type=openapi.TYPE_STRING),
-            openapi.Parameter('start_date', openapi.IN_QUERY, type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-            openapi.Parameter('end_date', openapi.IN_QUERY, type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-        ],
-        responses={200: CollectionRecordListSerializer(many=True)}
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        Response example:
+        {
+          "total": 12,
+          "completed": 9,
+          "pending": 2,
+          "skipped": 1,
+          "cancelled": 0,
+          "rejected": 0
+        }
+        """
+        client = request.user.client
+        qs = CollectionRecord.objects.filter(client=client)
 
-    # --------------------------
-    # RETRIEVE
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Retrieve a specific collection",
-        responses={200: CollectionRecordDetailSerializer()}
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        summary = {
+            "total": qs.count(),
+            "completed": qs.filter(status="completed").count(),
+            "pending": qs.filter(status="pending").count(),
+            "skipped": qs.filter(status="skipped").count(),
+            "cancelled": qs.filter(status="cancelled").count(),
+            "rejected": qs.filter(status="rejected").count(),
+        }
+        return Response(summary)
 
-    # --------------------------
-    # CREATE
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Create a new collection",
-        request_body=CollectionRecordCreateSerializer,
-        responses={201: CollectionRecordDetailSerializer()}
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+    @action(detail=False, methods=["get"], permission_classes=[IsClient])
+    def my_records(self, request):
+        """
+        GET /collections/my_records/
 
-    # --------------------------
-    # UPDATE
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Update a collection",
-        request_body=CollectionRecordUpdateSerializer,
-        responses={200: CollectionRecordDetailSerializer()}
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        Client lists all their own collection records in reverse chronological order.
+        Includes payment, waste, GPS, and photo evidence.
 
-    @swagger_auto_schema(
-        operation_summary="Partially update a collection",
-        request_body=CollectionRecordUpdateSerializer,
-        responses={200: CollectionRecordDetailSerializer()}
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        Response example:
+        [
+          {
+            "collection_id": 55,
+            "status": "completed",
+            "collection_type": "on_demand",
+            "scheduled_date": "2025-12-13",
+            "payment_method": "momo",
+            "amount_paid": "20.00",
+            "bag_count": 3,
+            "bin_size_liters": 240,
+            "waste_type": "mixed",
+            "collected_at": "2025-12-13T08:45:00Z"
+          }
+        ]
+        """
+        client = request.user.client
+        qs = CollectionRecord.objects.filter(client=client).order_by("-collected_at")
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
 
-    # --------------------------
-    # DESTROY (CANCEL)
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Cancel a collection",
-        responses={200: "Collection cancelled successfully"}
-    )
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.status != 'pending':
-            return Response({"error": "Can only cancel pending collections."}, status=400)
-        instance.status = 'cancelled'
-        instance.save()
-        return Response({"message": "Collection cancelled successfully"}, status=200)
+    @action(detail=True, methods=["post"], permission_classes=[IsCompanyCollector])
+    def update_record(self, request, pk=None):
+        """
+        POST /collections/{id}/update_record/
 
-    # --------------------------
-    # BULK CREATE
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Bulk create collections",
-        request_body=CollectionRecordBulkCreateSerializer,
-        responses={201: CollectionRecordListSerializer(many=True)}
-    )
-    @action(detail=False, methods=['post'])
-    def bulk_create(self, request):
-        serializer = CollectionRecordBulkCreateSerializer(data=request.data)
+        Collector updates a collection record with operational evidence:
+        - Payment method + amount
+        - Waste quantity (bags, bin size, estimated volume)
+        - Waste type
+        - GPS coordinates
+        - Photos (before/after)
+        - Notes
+
+        This endpoint is typically called when completing a stop.
+        It marks the record as 'completed' and sets collected_at timestamp.
+
+        Request example:
+        {
+          "payment_method": "momo",
+          "amount_paid": "20.00",
+          "bag_count": 3,
+          "bin_size_liters": 240,
+          "waste_type": "mixed",
+          "latitude": 5.603,
+          "longitude": -0.196,
+          "notes": "Client paid via MoMo"
+        }
+
+        Response example:
+        {
+          "collection_id": 55,
+          "client_name": "Ama Mensah",
+          "collector_name": "Kwame Asante",
+          "status": "completed",
+          "payment_method": "momo",
+          "amount_paid": "20.00",
+          "bag_count": 3,
+          "bin_size_liters": 240,
+          "waste_type": "mixed",
+          "latitude": 5.603,
+          "longitude": -0.196,
+          "notes": "Client paid via MoMo",
+          "collected_at": "2025-12-13T08:45:00Z"
+        }
+        """
+        record = self.get_object()
+        serializer = CollectionRecordCreateSerializer(record, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        collections = serializer.save()
-        return Response(CollectionRecordListSerializer(collections, many=True).data, status=201)
-
-    # --------------------------
-    # START COLLECTION
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Start a collection",
-        responses={200: CollectionRecordDetailSerializer()}
-    )
-    @action(detail=True, methods=['post'])
-    def start_collection(self, request, pk=None):
-        collection = self.get_object()
-        if collection.status != 'pending':
-            return Response({"error": "Can only start pending collections"}, status=400)
-
-        collection.collection_start = timezone.now()
-        collection.status = 'in_progress'
-        collection.save()
-
-        if collection.route_stop:
-            collection.route_stop.status = 'in_progress'
-            collection.route_stop.actual_start = timezone.now()
-            collection.route_stop.save()
-
-        return Response(CollectionRecordDetailSerializer(collection).data)
-
-    # --------------------------
-    # COMPLETE COLLECTION
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Complete a collection",
-        request_body=CollectionRecordUpdateSerializer,
-        responses={200: CollectionRecordDetailSerializer()}
-    )
-    @action(detail=True, methods=['post'])
-    def complete_collection(self, request, pk=None):
-        collection = self.get_object()
-        serializer = CollectionRecordUpdateSerializer(collection, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-
-        serializer.validated_data['collection_end'] = timezone.now()
-        serializer.validated_data['status'] = 'completed'
-        serializer.save()
-
-        if collection.route_stop:
-            collection.route_stop.status = 'completed'
-            collection.route_stop.actual_end = timezone.now()
-            collection.route_stop.save()
-
-        return Response(CollectionRecordDetailSerializer(collection).data)
-
-    # --------------------------
-    # STATS
-    # --------------------------
-    @swagger_auto_schema(
-        operation_summary="Get collection statistics",
-        responses={200: CollectionRecordStatsSerializer()}
-    )
-    @action(detail=False, methods=['get'])
-    def stats(self, request):
-        qs = self.get_queryset()
-        stats = qs.aggregate(
-            total_collections=Count('collection_id'),
-            completed=Count('collection_id', filter=Q(status='completed')),
-            skipped=Count('collection_id', filter=Q(status='skipped')),
-            pending=Count('collection_id', filter=Q(status='pending')),
-            cancelled=Count('collection_id', filter=Q(status='cancelled')),
-            rejected=Count('collection_id', filter=Q(status='rejected')),
-            total_bags=Sum('bag_count'),
-            avg_segregation_score=Avg('segregation_score'),
-            avg_duration_minutes=Avg('duration_minutes'),
-        )
-        return Response(stats)
+        serializer.save(status="completed", collected_at=record.collected_at or None)
+        return Response(CollectionRecordSerializer(record).data, status=status.HTTP_200_OK)

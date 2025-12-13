@@ -8,3 +8,4 @@ router.register(r'', CollectionRecordViewSet, basename='collection')
 urlpatterns = [
     path('', include(router.urls)),
 ]
+

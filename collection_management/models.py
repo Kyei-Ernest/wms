@@ -6,8 +6,8 @@ from decimal import Decimal
 
 class CollectionRecord(models.Model):
     """
-    Records of waste collections tied to routes and stops.
-    Designed for Ghana's waste management practices.
+    Immutable record of a waste collection tied to a route stop.
+    Captures operational evidence, payment info, and audit data.
     """
 
     collection_id = models.AutoField(primary_key=True)
@@ -21,40 +21,47 @@ class CollectionRecord(models.Model):
     collector = models.ForeignKey(
         'collector.Collector',
         on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
         related_name='collections'
     )
     route = models.ForeignKey(
         'routes.Route',
         on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
         related_name='collections'
     )
     route_stop = models.OneToOneField(
         'routes.RouteStop',
         on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
         related_name='collection_record'
     )
 
-    # Payment
+    # Payment (collector indicates at completion)
     PAYMENT_CHOICES = [
         ('cash', 'Cash'),
         ('momo', 'Mobile Money'),
         ('bank', 'Bank Transfer'),
         ('later', 'Invoice Later'),
     ]
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='later')
-    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_CHOICES,
+        default='later',
+        help_text="Payment method indicated by collector"
+    )
+    amount_paid = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text="Amount paid by client at collection"
+    )
 
     # Collection type
     COLLECTION_TYPE_CHOICES = [
         ('scheduled', 'Scheduled'),
         ('on_demand', 'On-Demand'),
-        ('emergency', 'Emergency'),
     ]
     collection_type = models.CharField(max_length=20, choices=COLLECTION_TYPE_CHOICES)
 

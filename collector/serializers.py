@@ -68,13 +68,14 @@ class CollectorCreateSerializer(serializers.ModelSerializer):
             "email", "phone_number", "password",
 
             # COLLECTOR FIELDS
+            "first_name",
+            "last_name",
             "company",
             "supervisor",
             "is_private_collector",
             "vehicle_number",
             "vehicle_type",
-            "assigned_area_zone",
-            "employment_type",
+            #"assigned_area_zone",
             "daily_wage_or_incentive_rate",
             "bank_account_details",
         ]
@@ -158,7 +159,6 @@ class CollectorListSerializer(serializers.ModelSerializer):
             "vehicle_number",
             "vehicle_type",
             "assigned_area_zone",
-            "employment_type",
             "daily_wage_or_incentive_rate",
             "average_rating",
             "total_collections",
@@ -174,7 +174,6 @@ class CollectorUpdateSerializer(serializers.ModelSerializer):
             "vehicle_number",
             "vehicle_type",
             "assigned_area_zone",
-            "employment_type",
             "daily_wage_or_incentive_rate",
             "bank_account_details",
             "last_known_latitude",

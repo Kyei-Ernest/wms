@@ -7,6 +7,8 @@ from drf_yasg.utils import swagger_auto_schema
 from .models import Route,RouteStop
 from .serializers import RouteSerializer, RouteStopSerializer
 from accounts.permissions import IsSupervisor, IsCompanyCollector
+from collection_management.models import CollectionRecord
+from collection_management.serializers import CollectionRecordCreateSerializer, CollectionRecordSerializer
 class RouteViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing company collector routes.
@@ -209,11 +211,34 @@ class RouteStopViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=['post'], permission_classes=[IsCompanyCollector])
     def complete(self, request, pk=None):
+        """
+        Collector completes a stop.
+        - Marks stop as completed
+        - Creates or updates a CollectionRecord with payment, photos, GPS, and waste data
+        """
         stop = self.get_object()
         stop.status = "completed"
         stop.actual_end = timezone.now()
         stop.save()
-        return Response(self.get_serializer(stop).data)
+
+        # Create or update CollectionRecord
+        record, created = CollectionRecord.objects.get_or_create(route_stop=stop, defaults={
+            "client": stop.ondemand_request.client if stop.ondemand_request else stop.scheduled_request.client,
+            "collector": stop.route.collector,
+            "route": stop.route,
+            "collection_type": "on_demand" if stop.ondemand_request else "scheduled",
+            "scheduled_date": stop.route.route_date,
+            "collection_start": stop.actual_start,
+            "collection_end": stop.actual_end,
+            "status": "completed",
+        })
+
+        # Update with collector input
+        serializer = CollectionRecordCreateSerializer(record, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(status="completed", collected_at=timezone.now())
+
+        return Response(CollectionRecordSerializer(record).data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_summary="Skip a stop",
