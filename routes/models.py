@@ -61,13 +61,32 @@ class Route(models.Model):
 
         total_distance = 0.0
         for i in range(len(stops) - 1):
-            if stops[i].location and stops[i+1].location:
-                total_distance += stops[i].location.distance(stops[i+1].location) / 1000
+            # Get location from linked request if available
+            loc1 = None
+            loc2 = None
+
+            if stops[i].ondemand_request and stops[i].ondemand_request.location:
+                loc1 = stops[i].ondemand_request.location
+            elif stops[i].scheduled_request and stops[i].scheduled_request.location:
+                loc1 = stops[i].scheduled_request.location
+            else:
+                loc1 = stops[i].location  # fallback
+
+            if stops[i+1].ondemand_request and stops[i+1].ondemand_request.location:
+                loc2 = stops[i+1].ondemand_request.location
+            elif stops[i+1].scheduled_request and stops[i+1].scheduled_request.location:
+                loc2 = stops[i+1].scheduled_request.location
+            else:
+                loc2 = stops[i+1].location  # fallback
+
+            if loc1 and loc2:
+                total_distance += loc1.distance(loc2) / 1000  # meters → km
 
         self.total_distance_km = round(total_distance, 3)
 
+        # Estimate duration = travel time + stop time
         total_stop_time = sum([s.expected_minutes for s in stops if s.expected_minutes])
-        average_speed_kmh = 40
+        average_speed_kmh = 40  # configurable
         travel_time_minutes = (total_distance / average_speed_kmh) * 60
 
         total_minutes = travel_time_minutes + total_stop_time
@@ -79,10 +98,22 @@ class Route(models.Model):
             self.completion_percent = 0
             return
 
-        completed_stops = self.stops.filter(status='completed').count()
+        completed_stops = 0
+
+        for stop in self.stops.all():
+            # Check linked OnDemandRequest
+            if stop.ondemand_request and stop.ondemand_request.request_status == "completed":
+                completed_stops += 1
+            # Check linked ScheduledRequest
+            elif stop.scheduled_request and stop.scheduled_request.request_status == "completed":
+                completed_stops += 1
+            # Optional: if no request linked, fall back to stop.status
+            elif stop.status == "completed":
+                completed_stops += 1
+
         self.completion_percent = int((completed_stops / stops_total) * 100)
 
-        # Auto-update status, but preserve cancelled
+        # Auto-update route status, but preserve cancelled
         if self.status == 'cancelled':
             return
         if self.completion_percent == 100:
@@ -104,12 +135,30 @@ class Route(models.Model):
 
 
 
+
 class RouteStop(models.Model):
     stop_id = models.AutoField(primary_key=True)
-    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='stops')
-    client = models.ForeignKey('client.Client', on_delete=models.SET_NULL, null=True, blank=True)
+    route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='stops')
+
+    # Link to either type of request
+    ondemand_request = models.ForeignKey(
+        'on_demand.OnDemandRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='route_stops'
+    )
+    scheduled_request = models.ForeignKey(
+        'scheduled_request.ScheduledRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='route_stops'
+    )
+
+    # Route-specific metadata
     location = gis_models.PointField(srid=4326)
-    order = models.PositiveIntegerField(help_text="1 means first stop")
+    order = models.PositiveIntegerField(help_text="1 means first stop in route")
     expected_minutes = models.IntegerField(
         default=5,
         validators=[MinValueValidator(1)],
@@ -138,4 +187,9 @@ class RouteStop(models.Model):
         ]
 
     def __str__(self):
-        return f"Stop {self.order} for Route {self.route.route_id}"
+        request_ref = (
+            f"OnDemand #{self.ondemand_request_id}" if self.ondemand_request
+            else f"Scheduled #{self.scheduled_request_id}" if self.scheduled_request
+            else "Unlinked"
+        )
+        return f"Stop {self.order} for Route {self.route.route_id} ({request_ref})"

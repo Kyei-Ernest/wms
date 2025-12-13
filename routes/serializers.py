@@ -3,160 +3,104 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import Point
 from client.models import Client
 from .models import Route, RouteStop
+from on_demand.serializers import OnDemandRequestDetailSerializer
+from scheduled_request.serializers import ScheduledRequestDetailSerializer
 
 
 class RouteStopSerializer(serializers.ModelSerializer):
-    latitude = serializers.FloatField(write_only=True, required=False)
-    longitude = serializers.FloatField(write_only=True, required=False)
+    # Nested request serializers
+    ondemand_request = OnDemandRequestDetailSerializer(read_only=True)
+    scheduled_request = ScheduledRequestDetailSerializer(read_only=True)
+
+    # Derived fields for clarity
+    request_type = serializers.SerializerMethodField()
+    request_status = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
 
     class Meta:
         model = RouteStop
         fields = [
-            'stop_id', 'order', 'client', 'status',
-            'expected_minutes', 'actual_start', 'actual_end',
-            'notes', 'latitude', 'longitude', 'location',
+            "stop_id",
+            "order",
+            "location",
+            "expected_minutes",
+            "actual_start",
+            "actual_end",
+            "status",
+            "notes",
+            "ondemand_request",
+            "scheduled_request",
+            "request_type",
+            "request_status",
+            "client_name",
         ]
-        read_only_fields = ['stop_id', 'location']
 
-    def validate(self, data):
-        lat, lon = data.get('latitude'), data.get('longitude')
-        if (lat is None) ^ (lon is None):
-            raise serializers.ValidationError("Both latitude and longitude must be provided together.")
+    def get_request_type(self, obj):
+        if obj.ondemand_request:
+            return "OnDemand"
+        elif obj.scheduled_request:
+            return "Scheduled"
+        return None
 
-        # If lat/lon provided, check zone boundary
-        if lat is not None and lon is not None:
-            route = self.context.get('route') or self.instance.route if self.instance else None
-            if route and route.zone:
-                point = Point(lon, lat, srid=4326)
-                if not route.zone.boundary.contains(point):
-                    raise serializers.ValidationError(
-                        f"Stop at ({lat}, {lon}) is outside the zone boundary: {route.zone.name}"
-                    )
-        return data
+    def get_request_status(self, obj):
+        if obj.ondemand_request:
+            return obj.ondemand_request.request_status
+        elif obj.scheduled_request:
+            return obj.scheduled_request.request_status
+        return obj.status  # fallback to stop status
 
-    def create(self, validated_data):
-        lat, lon = validated_data.pop('latitude', None), validated_data.pop('longitude', None)
-        if lat is not None and lon is not None:
-            validated_data['location'] = Point(lon, lat, srid=4326)
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        lat, lon = validated_data.pop('latitude', None), validated_data.pop('longitude', None)
-        if lat is not None and lon is not None:
-            validated_data['location'] = Point(lon, lat, srid=4326)
-        return super().update(instance, validated_data)
+    def get_client_name(self, obj):
+        if obj.ondemand_request and obj.ondemand_request.client:
+            return obj.ondemand_request.client.full_name
+        elif obj.scheduled_request and obj.scheduled_request.client:
+            return obj.scheduled_request.client.full_name
+        return None
 
 
 class RouteSerializer(serializers.ModelSerializer):
     stops = RouteStopSerializer(many=True, read_only=True)
 
+    # Derived fields for clarity
+    total_stops = serializers.SerializerMethodField()
+    completed_stops = serializers.SerializerMethodField()
+    collector_name = serializers.SerializerMethodField()
+    supervisor_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Route
         fields = [
-            'route_id', 'company', 'zone', 'supervisor', 'collector',
-            'route_date', 'start_time', 'end_time',
-            'actual_start', 'actual_end',
-            'completion_percent', 'status',
-            'total_distance_km', 'estimated_duration',
-            'created_at', 'updated_at',
-            'stops',
+            "route_id",
+            "company",
+            "zone",
+            "supervisor",
+            "collector",
+            "route_date",
+            "start_time",
+            "end_time",
+            "actual_start",
+            "actual_end",
+            "completion_percent",
+            "status",
+            "total_distance_km",
+            "estimated_duration",
+            "created_at",
+            "updated_at",
+            "total_stops",
+            "completed_stops",
+            "collector_name",
+            "supervisor_name",
+            "stops",
         ]
-        read_only_fields = ['completion_percent', 'total_distance_km', 'estimated_duration']
 
+    def get_total_stops(self, obj):
+        return obj.stops.count()
 
-class RouteCreateSerializer(serializers.ModelSerializer):
-    stops = serializers.ListField(child=serializers.DictField(), required=False)
+    def get_completed_stops(self, obj):
+        return obj.stops.filter(status="completed").count()
 
-    class Meta:
-        model = Route
-        fields = ['company', 'zone', 'supervisor', 'collector', 'route_date', 'status', 'stops']
+    def get_collector_name(self, obj):
+        return obj.collector.full_name if obj.collector else None
 
-    def create(self, validated_data):
-        stops_data = validated_data.pop('stops', [])
-        route = Route.objects.create(**validated_data)
+    def get_supervisor_name(self, obj):
+        return obj.supervisor.user.get_full_name() if obj.supervisor else None
 
-        if not stops_data:
-            # Automatically generate stops from clients inside the zone
-            zone = route.zone
-            clients_in_zone = Client.objects.filter(location__within=zone.boundary)
-
-            if not clients_in_zone.exists():
-                raise serializers.ValidationError(
-                    f"No clients found inside zone {zone.name}. Cannot auto-generate stops."
-                )
-
-            for idx, client in enumerate(clients_in_zone, start=1):
-                RouteStop.objects.create(
-                    route=route,
-                    client=client,
-                    order=idx,
-                    expected_minutes=5,
-                    location=client.location,
-                    status='pending'
-                )
-        else:
-            # Manual stop creation with validation
-            for idx, stop_data in enumerate(stops_data, start=1):
-                lat, lon = stop_data.pop('latitude', None), stop_data.pop('longitude', None)
-                if lat is not None and lon is not None:
-                    point = Point(lon, lat, srid=4326)
-                    if not route.zone.boundary.contains(point):
-                        raise serializers.ValidationError(
-                            f"Stop at ({lat}, {lon}) is outside the zone boundary: {route.zone.name}"
-                        )
-                    stop_data['location'] = point
-                RouteStop.objects.create(route=route, order=idx, **stop_data)
-
-        return route
-
-
-class RouteStatusUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Route
-        fields = ['status']
-
-    def validate_status(self, value):
-        instance = self.instance
-        valid_transitions = {
-            'draft': ['assigned', 'cancelled'],
-            'assigned': ['in_progress', 'cancelled'],
-            'in_progress': ['completed', 'cancelled'],
-            'completed': [],
-            'cancelled': [],
-        }
-        if value not in valid_transitions.get(instance.status, []):
-            raise serializers.ValidationError(
-                f"Invalid status transition from {instance.status} to {value}."
-            )
-        return value
-
-    """
-    Serializer for updating individual stops
-    """
-    latitude = serializers.FloatField(required=False, allow_null=True, write_only=True)
-    longitude = serializers.FloatField(required=False, allow_null=True, write_only=True)
-    
-    class Meta:
-        model = RouteStop
-        fields = [
-            'order',
-            'expected_minutes',
-            'actual_start',
-            'actual_end',
-            'status',
-            'notes',
-            'latitude',
-            'longitude',
-        ]
-    
-    def update(self, instance, validated_data):
-        """Update stop with Point field from lat/lng if provided"""
-        from django.contrib.gis.geos import Point
-        
-        latitude = validated_data.pop('latitude', None)
-        longitude = validated_data.pop('longitude', None)
-        
-        if latitude is not None and longitude is not None:
-            instance.location = Point(longitude, latitude, srid=4326)
-        
-        return super().update(instance, validated_data)

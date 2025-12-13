@@ -6,6 +6,7 @@ from datetime import timedelta
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from geopy.distance import geodesic
+from scheduled_request.models import ScheduledRequest
 
 from .models import OnDemandRequest
 from .serializers import (
@@ -343,3 +344,40 @@ class OnDemandRequestViewSet(viewsets.ModelViewSet):
             "collector_summary": collector_summary if collector_id else None,
         }
         return Response(data)
+    
+    @swagger_auto_schema(
+        operation_summary="Client request summary",
+        operation_description="Client views aggregated stats of their own requests (on-demand or scheduled)."
+    )
+    @action(detail=False, methods=['get'], permission_classes=[IsClient])
+    def my_summary(self, request):
+        client = request.user.client
+        ondemand_qs = OnDemandRequest.objects.filter(client=client)
+        scheduled_qs = ScheduledRequest.objects.filter(client=client)
+
+        summary = {
+            "ondemand": {
+                "total": ondemand_qs.count(),
+                "completed": ondemand_qs.filter(request_status="completed").count(),
+                "pending": ondemand_qs.filter(request_status="pending").count(),
+                "cancelled": ondemand_qs.filter(request_status="cancelled").count(),
+            },
+            "scheduled": {
+                "total": scheduled_qs.count(),
+                "completed": scheduled_qs.filter(request_status="completed").count(),
+                "pending": scheduled_qs.filter(request_status="pending").count(),
+                "cancelled": scheduled_qs.filter(request_status="cancelled").count(),
+            }
+        }
+        return Response(summary)
+    
+    @swagger_auto_schema(
+        operation_summary="List client on-demand requests",
+        operation_description="Client lists all their own on-demand requests."
+    )
+    @action(detail=False, methods=['get'], permission_classes=[IsClient])
+    def my_requests(self, request):
+        client = request.user.client
+        qs = OnDemandRequest.objects.filter(client=client).order_by('-created_at')
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)

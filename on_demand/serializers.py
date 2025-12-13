@@ -95,7 +95,7 @@ class OnDemandRequestCreateSerializer(serializers.ModelSerializer):
             'pickup_time_slot',
             'address_line1',
             'landmark',
-            'area_zone',
+            #'area_zone',
             'city',
             'latitude',
             'longitude',
@@ -121,8 +121,6 @@ class OnDemandRequestCreateSerializer(serializers.ModelSerializer):
         lon = validated_data.pop('longitude')
         validated_data['location'] = Point(float(lon), float(lat))
         return OnDemandRequest.objects.create(**validated_data)
-
-
 
 
 class OnDemandRequestUpdateSerializer(serializers.ModelSerializer):

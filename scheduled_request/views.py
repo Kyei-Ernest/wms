@@ -1,4 +1,5 @@
 from datetime import timedelta
+from accounts.permissions import IsClient
 from rest_framework import status, viewsets, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -513,3 +514,14 @@ class ScheduledRequestViewSet(viewsets.ModelViewSet):
             "collector_summary": collector_summary if collector_id else None,
         }
         return Response(data)
+    
+    @swagger_auto_schema(
+        operation_summary="List client scheduled requests",
+        operation_description="Client lists all their own scheduled requests."
+    )
+    @action(detail=False, methods=['get'], permission_classes=[IsClient])
+    def my_requests(self, request):
+        client = request.user.client
+        qs = ScheduledRequest.objects.filter(client=client).order_by('-created_at')
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
