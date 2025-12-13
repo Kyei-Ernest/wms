@@ -1,0 +1,6741 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Borla Tracker(Waste Management System)",
+    "description": "API documentation for the Borla Tracker (Waste Management System)",
+    "contact": {
+      "email": "ernestkyei101@gmail.com"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://postumbonal-monatomic-cecelia.ngrok-free.dev/api"
+    }
+  ],
+  "security": [
+    {
+      "Basic": []
+    }
+  ],
+  "paths": {
+    "/auth/login/": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Authenticate user",
+        "description": "Authenticates a user using phone number, email, or username and returns JWT access & refresh tokens along with role-based profile data.",
+        "operationId": "auth_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Login successful"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "User primary key"
+                        },
+                        "phone_number": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "System user role",
+                          "enum": [
+                            "client",
+                            "company",
+                            "collector",
+                            "supervisor",
+                            "admin"
+                          ]
+                        },
+                        "is_active": {
+                          "type": "boolean"
+                        },
+                        "profile": {
+                          "type": "object",
+                          "properties": {},
+                          "description": "Role-specific profile data"
+                        }
+                      }
+                    },
+                    "tokens": {
+                      "type": "object",
+                      "properties": {
+                        "refresh": {
+                          "type": "string",
+                          "description": "JWT refresh token"
+                        },
+                        "access": {
+                          "type": "string",
+                          "description": "JWT access token"
+                        }
+                      }
+                    }
+                  },
+                  "description": "Successful authentication response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request – validation or authentication error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "error": "Invalid credentials",
+                  "detail": "Phone number, email, or password is incorrect."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – account inactive or blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "detail": "Account is inactive."
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/auth/logout/": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Logout user",
+        "description": "Invalidates the provided refresh token by blacklisting it. Optionally invalidates the access token if supported.",
+        "operationId": "auth_logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "refresh"
+                ],
+                "type": "object",
+                "properties": {
+                  "refresh": {
+                    "type": "string",
+                    "description": "Refresh token to be blacklisted"
+                  },
+                  "access": {
+                    "type": "string",
+                    "description": "Optional access token to invalidate"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Logout successful. Tokens invalidated."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request – validation or authentication error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "error": "Invalid credentials",
+                  "detail": "Phone number, email, or password is incorrect."
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/auth/token/refresh/": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Refresh JWT tokens",
+        "description": "Generates a new access token using a valid refresh token. A new refresh token is returned if rotation is enabled.",
+        "operationId": "auth_token_refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRefreshCustom"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access": {
+                      "type": "string"
+                    },
+                    "refresh": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request – validation or authentication error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "error": "Invalid credentials",
+                  "detail": "Phone number, email, or password is incorrect."
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/client/list/": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "List all clients",
+        "operationId": "client_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClientList"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/client/profile/": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Get my client profile",
+        "operationId": "client_profile_retrieve",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Client profile not found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Fully update my profile",
+        "operationId": "client_profile_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "phone_number": [
+                    "This phone number is already registered."
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Client profile not found"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "patch": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Partially update my profile",
+        "operationId": "client_profile_partial_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "phone_number": [
+                    "This phone number is already registered."
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Client profile not found"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/client/register/": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Register a new client",
+        "description": "Register a new client account.\nCreates a User (role=client) + linked Client profile.",
+        "operationId": "client_register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Client created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "phone_number": [
+                    "This phone number is already registered."
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/collection-records/": {
+      "get": {
+        "tags": [
+          "collection-records"
+        ],
+        "summary": "ViewSet for accessing and managing CollectionRecord data.",
+        "description": "CollectionRecord is the immutable evidence log of a waste collection event.\nIt captures payment info, GPS, photos, waste quantity, and audit data.\n\nRole-based access:\n- Clients: can only view their own records and summaries.\n- Supervisors: can view all records tied to their company routes.\n- Collectors: can view records they created and update them with evidence.\n\nEndpoints exposed:\n- GET /collections/ → list records (scoped by role)\n- GET /collections/{id}/ → retrieve single record\n- GET /collections/my_summary/ → client summary stats\n- GET /collections/my_records/ → client’s own records list\n- POST /collections/{id}/update_record/ → collector updates evidence/payment",
+        "operationId": "collection-records_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collection-records/my_records/": {
+      "get": {
+        "tags": [
+          "collection-records"
+        ],
+        "summary": "GET /collections/my_records/",
+        "description": "Client lists all their own collection records in reverse chronological order.\nIncludes payment, waste, GPS, and photo evidence.\n\nResponse example:\n[\n  {\n    \"collection_id\": 55,\n    \"status\": \"completed\",\n    \"collection_type\": \"on_demand\",\n    \"scheduled_date\": \"2025-12-13\",\n    \"payment_method\": \"momo\",\n    \"amount_paid\": \"20.00\",\n    \"bag_count\": 3,\n    \"bin_size_liters\": 240,\n    \"waste_type\": \"mixed\",\n    \"collected_at\": \"2025-12-13T08:45:00Z\"\n  }\n]",
+        "operationId": "collection-records_my_records",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collection-records/my_summary/": {
+      "get": {
+        "tags": [
+          "collection-records"
+        ],
+        "summary": "GET /collections/my_summary/",
+        "description": "Client views aggregated stats of their own collection records.\nUseful for dashboards showing quick totals.\n\nResponse example:\n{\n  \"total\": 12,\n  \"completed\": 9,\n  \"pending\": 2,\n  \"skipped\": 1,\n  \"cancelled\": 0,\n  \"rejected\": 0\n}",
+        "operationId": "collection-records_my_summary",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collection-records/{collection_id}/": {
+      "get": {
+        "tags": [
+          "collection-records"
+        ],
+        "summary": "ViewSet for accessing and managing CollectionRecord data.",
+        "description": "CollectionRecord is the immutable evidence log of a waste collection event.\nIt captures payment info, GPS, photos, waste quantity, and audit data.\n\nRole-based access:\n- Clients: can only view their own records and summaries.\n- Supervisors: can view all records tied to their company routes.\n- Collectors: can view records they created and update them with evidence.\n\nEndpoints exposed:\n- GET /collections/ → list records (scoped by role)\n- GET /collections/{id}/ → retrieve single record\n- GET /collections/my_summary/ → client summary stats\n- GET /collections/my_records/ → client’s own records list\n- POST /collections/{id}/update_record/ → collector updates evidence/payment",
+        "operationId": "collection-records_read",
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "description": "A unique integer value identifying this collection record.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRecord"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collection-records/{collection_id}/update_record/": {
+      "post": {
+        "tags": [
+          "collection-records"
+        ],
+        "summary": "POST /collections/{id}/update_record/",
+        "description": "Collector updates a collection record with operational evidence:\n- Payment method + amount\n- Waste quantity (bags, bin size, estimated volume)\n- Waste type\n- GPS coordinates\n- Photos (before/after)\n- Notes\n\nThis endpoint is typically called when completing a stop.\nIt marks the record as 'completed' and sets collected_at timestamp.\n\nRequest example:\n{\n  \"payment_method\": \"momo\",\n  \"amount_paid\": \"20.00\",\n  \"bag_count\": 3,\n  \"bin_size_liters\": 240,\n  \"waste_type\": \"mixed\",\n  \"latitude\": 5.603,\n  \"longitude\": -0.196,\n  \"notes\": \"Client paid via MoMo\"\n}\n\nResponse example:\n{\n  \"collection_id\": 55,\n  \"client_name\": \"Ama Mensah\",\n  \"collector_name\": \"Kwame Asante\",\n  \"status\": \"completed\",\n  \"payment_method\": \"momo\",\n  \"amount_paid\": \"20.00\",\n  \"bag_count\": 3,\n  \"bin_size_liters\": 240,\n  \"waste_type\": \"mixed\",\n  \"latitude\": 5.603,\n  \"longitude\": -0.196,\n  \"notes\": \"Client paid via MoMo\",\n  \"collected_at\": \"2025-12-13T08:45:00Z\"\n}",
+        "operationId": "collection-records_update_record",
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "description": "A unique integer value identifying this collection record.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRecord"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/collector/": {
+      "get": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "List all collectors",
+        "description": "List all collectors in the system.\nTypically used by supervisors or admins.",
+        "operationId": "collector_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectorList"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collector/company/{company_id}/": {
+      "get": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Get collectors by company",
+        "description": "List all collectors belonging to a specific company.\nPrivate collectors are excluded.",
+        "operationId": "collectors_by_company",
+        "parameters": [
+          {
+            "name": "company_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectorList"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No collectors found matching the criteria."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collector/me/": {
+      "get": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Get my collector profile",
+        "description": "Authenticated collector can view and update their own profile.",
+        "operationId": "collector_profile_retrieve",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No collectors found matching the criteria."
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Fully update my profile",
+        "description": "Authenticated collector can view and update their own profile.",
+        "operationId": "collector_profile_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectorUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Invalid input or rule violation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No collectors found matching the criteria."
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "patch": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Partially update my profile",
+        "description": "Authenticated collector can view and update their own profile.",
+        "operationId": "collector_profile_partial_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectorUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Invalid input or rule violation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No collectors found matching the criteria."
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/collector/private/": {
+      "get": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "List all private collectors",
+        "description": "List all independent/private collectors.",
+        "operationId": "private_collectors_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectorList"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collector/register/": {
+      "post": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Register a new collector",
+        "description": "\nRegister a new collector.\n\n- Private collectors: set `is_private_collector=true`. They are active immediately.\n- Company collectors: set `is_private_collector=false`. Must be created by a company account.\n  Backend auto-injects company_id and sets status=\"pending_approval\".\n- Companies cannot create private collectors.\n",
+        "operationId": "collector_register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectorCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Invalid input or rule violation"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/collector/supervisor/{supervisor_id}/": {
+      "get": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Get collectors by supervisor",
+        "description": "List all collectors under a specific supervisor.",
+        "operationId": "collectors_by_supervisor",
+        "parameters": [
+          {
+            "name": "supervisor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectorList"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No collectors found matching the criteria."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collector/zone/": {
+      "get": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Get collectors by zone",
+        "description": "List collectors assigned to a specific zone.\nOptional query param `active=true` filters only active collectors.",
+        "operationId": "collectors_by_zone",
+        "parameters": [
+          {
+            "name": "zone",
+            "in": "query",
+            "description": "Zone name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter active only",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectorList"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collector/{collector_id}/approval/": {
+      "post": {
+        "tags": [
+          "Collectors"
+        ],
+        "summary": "Approve or reject a pending collector",
+        "description": "\nCompanies use this endpoint to approve or reject collectors who registered\nunder their company but are currently in status=\"pending_approval\".\n\nRequest body:\n{\n  \"action\": \"approve\"\n}\nor\n{\n  \"action\": \"reject\"\n}\n\nResponses:\n- 200: Collector status updated successfully.\n- 400: Invalid action provided.\n- 404: Collector not found or not tied to this company.\n",
+        "operationId": "collector_approval",
+        "parameters": [
+          {
+            "name": "collector_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "action"
+                ],
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "description": "Action to perform on the pending collector",
+                    "enum": [
+                      "approve",
+                      "reject"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Invalid input or rule violation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No collectors found matching the criteria."
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/company/list/": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "List all companies",
+        "description": "List all companies in the system.\nPublic endpoint — no authentication needed.",
+        "operationId": "company_list",
+        "responses": {
+          "200": {
+            "description": "List of companies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Company"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/company/profile/": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Get company profile",
+        "description": "Retrieve or update the authenticated company's profile.\nOnly accessible to logged-in company users.",
+        "operationId": "company_profile_retrieve",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Company"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Company profile not found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Fully update company profile",
+        "description": "Retrieve or update the authenticated company's profile.\nOnly accessible to logged-in company users.",
+        "operationId": "company_profile_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Company"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Company"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "phone_number": [
+                    "A company with this phone number already exists."
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Company profile not found"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "patch": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Partially update company profile",
+        "description": "Retrieve or update the authenticated company's profile.\nOnly accessible to logged-in company users.",
+        "operationId": "company_profile_partial_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Company"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Company"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "phone_number": [
+                    "A company with this phone number already exists."
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Company profile not found"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/company/register/": {
+      "post": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Register a new company",
+        "description": "Register a new company account.\nCreates a User (role=company) + linked Company profile.\nReturns company data + JWT tokens on success.",
+        "operationId": "company_register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Company created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyWithTokens"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "phone_number": [
+                    "A company with this phone number already exists."
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnDemandRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnDemandRequestCreate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/list_by_collector/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_list_by_collector",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/list_by_company/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_list_by_company",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/list_pending/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_list_pending",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/list_today/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_list_today",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/my_requests/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "List client on-demand requests",
+        "description": "Client lists all their own on-demand requests.",
+        "operationId": "on-demand-requests_my_requests",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/my_summary/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Client request summary",
+        "description": "Client views aggregated stats of their own requests (on-demand or scheduled).",
+        "operationId": "on-demand-requests_my_summary",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/summary/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_summary",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/summary_all/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Combined Company & Collector Summary (On-Demand)",
+        "description": "Supervisor only: Get counts of on-demand requests by status for both company and collector.",
+        "operationId": "on-demand-requests_summary_all",
+        "parameters": [
+          {
+            "name": "company_id",
+            "in": "query",
+            "description": "Company ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "collector_id",
+            "in": "query",
+            "description": "Collector ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/summary_collector/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Collector Dashboard Summary (On-Demand)",
+        "description": "Collector only: Get counts of on-demand requests by status for a given collector.",
+        "operationId": "on-demand-requests_summary_collector",
+        "parameters": [
+          {
+            "name": "collector_id",
+            "in": "query",
+            "description": "Collector ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/summary_timebound/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_summary_timebound",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnDemandRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/on-demand-requests/{request_id}/": {
+      "get": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_read",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnDemandRequestDetail"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_update",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnDemandRequestUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnDemandRequestUpdate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "delete": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_delete",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "operationId": "on-demand-requests_partial_update",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnDemandRequestUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnDemandRequestUpdate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/{request_id}/accept/": {
+      "post": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Accept On-Demand Request",
+        "description": "Private collectors can accept available on-demand requests (status must be pending).",
+        "operationId": "on-demand-requests_accept",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnDemandRequestUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnDemandRequestUpdate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/{request_id}/assign/": {
+      "post": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Assign Collector (On-Demand)",
+        "description": "Supervisor only: Assign a collector to an on-demand request.",
+        "operationId": "on-demand-requests_assign",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "collector"
+                ],
+                "type": "object",
+                "properties": {
+                  "collector": {
+                    "type": "integer",
+                    "description": "Collector ID"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "collector"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "collector": {
+                      "type": "integer",
+                      "description": "Collector ID"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/{request_id}/cancel/": {
+      "post": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Cancel On-Demand Request",
+        "description": "Supervisor only: Cancel an on-demand request with reason.",
+        "operationId": "on-demand-requests_cancel",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "cancellation_reason"
+                ],
+                "type": "object",
+                "properties": {
+                  "cancellation_reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "cancellation_reason"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "cancellation_reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/{request_id}/complete/": {
+      "post": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Complete On-Demand Request",
+        "description": "Collector completes request with GPS validation.",
+        "operationId": "on-demand-requests_complete",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "latitude",
+                  "longitude"
+                ],
+                "type": "object",
+                "properties": {
+                  "latitude": {
+                    "type": "number",
+                    "description": "Collector latitude"
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "description": "Collector longitude"
+                  },
+                  "bag_count": {
+                    "type": "integer",
+                    "description": "Bag count collected"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "latitude",
+                    "longitude"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "latitude": {
+                      "type": "number",
+                      "description": "Collector latitude"
+                    },
+                    "longitude": {
+                      "type": "number",
+                      "description": "Collector longitude"
+                    },
+                    "bag_count": {
+                      "type": "integer",
+                      "description": "Bag count collected"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/on-demand-requests/{request_id}/start/": {
+      "post": {
+        "tags": [
+          "on-demand-requests"
+        ],
+        "summary": "Start On-Demand Request",
+        "description": "Collector marks on-demand request as in progress.",
+        "operationId": "on-demand-requests_start",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "A unique integer value identifying this on demand request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnDemandRequestUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnDemandRequestUpdate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/": {
+      "get": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "List all routes",
+        "description": "Returns a list of all routes accessible to the user. Supervisors see company routes, collectors see their own.",
+        "operationId": "routes_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Route"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Create a route",
+        "description": "Supervisor creates a new route for a collector. Requires company, zone, supervisor, collector, and route_date.",
+        "operationId": "routes_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Route"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/route-stops/": {
+      "get": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "List all route stops",
+        "description": "Returns a list of all stops. Supervisors can view all stops in their company routes; collectors see their assigned stops.",
+        "operationId": "routes_route-stops_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RouteStop"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Create a route stop",
+        "description": "Supervisor creates a new stop in a route. Typically links to an OnDemandRequest or ScheduledRequest.",
+        "operationId": "routes_route-stops_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/route-stops/{stop_id}/": {
+      "get": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Retrieve a route stop",
+        "description": "Returns detailed information about a single stop, including linked request details.",
+        "operationId": "routes_route-stops_read",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Update a route stop",
+        "description": "Supervisor updates stop details (e.g., order, expected_minutes, notes).",
+        "operationId": "routes_route-stops_update",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "delete": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Delete a route stop",
+        "description": "Supervisor deletes a stop from a route. Typically used for draft or cancelled routes.",
+        "operationId": "routes_route-stops_delete",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Update a route stop (partial)",
+        "description": "Supervisor updates stop details using PATCH. Only the provided fields will be updated. Typical use cases: changing stop order, adjusting expected_minutes, or adding notes.",
+        "operationId": "routes_route-stops_partial_update",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/route-stops/{stop_id}/complete/": {
+      "post": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Complete a stop",
+        "description": "Collector marks the stop as completed and sets actual_end timestamp.",
+        "operationId": "routes_route-stops_complete",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/route-stops/{stop_id}/fail/": {
+      "post": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Fail a stop",
+        "description": "Supervisor marks the stop as failed. Useful when a collection attempt was unsuccessful.",
+        "operationId": "routes_route-stops_fail",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/route-stops/{stop_id}/skip/": {
+      "post": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Skip a stop",
+        "description": "Supervisor marks the stop as skipped. Useful when a client is unavailable or request is cancelled.",
+        "operationId": "routes_route-stops_skip",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/route-stops/{stop_id}/start/": {
+      "post": {
+        "tags": [
+          "RouteStops"
+        ],
+        "summary": "Start a stop",
+        "description": "Collector marks the stop as in progress and sets actual_start timestamp.",
+        "operationId": "routes_route-stops_start",
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route stop.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteStop"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteStop"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/summary_timebound/": {
+      "get": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Route summary (timebound)",
+        "description": "Supervisor views aggregated route stats for today, this week, and this month.",
+        "operationId": "routes_summary_timebound",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Route"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/routes/{route_id}/": {
+      "get": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Retrieve a route",
+        "description": "Returns detailed information about a single route, including stops and progress.",
+        "operationId": "routes_read",
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Update a route",
+        "description": "Supervisor updates route details (e.g., timings, zone, collector).",
+        "operationId": "routes_update",
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Route"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "delete": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Delete a route",
+        "description": "Supervisor deletes a route. Typically used for draft or cancelled routes.",
+        "operationId": "routes_delete",
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Update a route (partial)",
+        "description": "Supervisor updates route details using PATCH. Only the provided fields will be updated. Typical use cases: adjusting start/end times, reassigning collector, or updating zone information.",
+        "operationId": "routes_partial_update",
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Route"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/{route_id}/complete/": {
+      "post": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Complete a route",
+        "description": "Collector marks the route as completed and sets actual_end timestamp. Completion percent auto-updates.",
+        "operationId": "routes_complete",
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Route"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/routes/{route_id}/start/": {
+      "post": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Start a route",
+        "description": "Collector marks the route as in progress and sets actual_start timestamp.",
+        "operationId": "routes_start",
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "description": "A unique integer value identifying this route.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Route"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/scheduled-requests/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "operationId": "scheduled-requests_list",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "operationId": "scheduled-requests_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduledRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestCreate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/scheduled-requests/list_by_collector/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "List Scheduled Requests by Collector",
+        "description": "Retrieve all scheduled requests assigned to a given collector.",
+        "operationId": "scheduled-requests_list_by_collector",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector_id",
+            "in": "query",
+            "description": "Collector ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/list_by_company/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "List Scheduled Requests by Company",
+        "description": "Retrieve all scheduled requests for a given company.",
+        "operationId": "scheduled-requests_list_by_company",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "description": "Company ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/list_pending/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "List Pending Scheduled Requests",
+        "description": "Retrieve all scheduled requests with status 'pending'.",
+        "operationId": "scheduled-requests_list_pending",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/list_today/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "List Today's Scheduled Requests",
+        "description": "Retrieve all scheduled requests for today's date.",
+        "operationId": "scheduled-requests_list_today",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/my_requests/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "List client scheduled requests",
+        "description": "Client lists all their own scheduled requests.",
+        "operationId": "scheduled-requests_my_requests",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledRequestDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/summary/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Company Dashboard Summary",
+        "description": "Get counts of scheduled requests by status for a given company.",
+        "operationId": "scheduled-requests_summary",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "description": "Company ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pending": {
+                      "type": "integer"
+                    },
+                    "assigned": {
+                      "type": "integer"
+                    },
+                    "in_progress": {
+                      "type": "integer"
+                    },
+                    "completed": {
+                      "type": "integer"
+                    },
+                    "cancelled": {
+                      "type": "integer"
+                    },
+                    "suspected": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/summary_all/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Combined Company & Collector Summary",
+        "description": "Get counts of scheduled requests by status for both company and collector in one response.",
+        "operationId": "scheduled-requests_summary_all",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "description": "Company ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "collector_id",
+            "in": "query",
+            "description": "Collector ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company_summary": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "assigned": {
+                          "type": "integer"
+                        },
+                        "in_progress": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "cancelled": {
+                          "type": "integer"
+                        },
+                        "suspected": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "collector_summary": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "assigned": {
+                          "type": "integer"
+                        },
+                        "in_progress": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "cancelled": {
+                          "type": "integer"
+                        },
+                        "suspected": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/summary_collector/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Collector Dashboard Summary",
+        "description": "Get counts of scheduled requests by status for a given collector.",
+        "operationId": "scheduled-requests_summary_collector",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector_id",
+            "in": "query",
+            "description": "Collector ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pending": {
+                      "type": "integer"
+                    },
+                    "assigned": {
+                      "type": "integer"
+                    },
+                    "in_progress": {
+                      "type": "integer"
+                    },
+                    "completed": {
+                      "type": "integer"
+                    },
+                    "cancelled": {
+                      "type": "integer"
+                    },
+                    "suspected": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/summary_timebound/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Company Time-Bounded Summary",
+        "description": "Get counts of scheduled requests by status for today, this week, and this month.",
+        "operationId": "scheduled-requests_summary_timebound",
+        "parameters": [
+          {
+            "name": "pickup_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "A search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "description": "Company ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "today": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "assigned": {
+                          "type": "integer"
+                        },
+                        "in_progress": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "cancelled": {
+                          "type": "integer"
+                        },
+                        "suspected": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "week": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "assigned": {
+                          "type": "integer"
+                        },
+                        "in_progress": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "cancelled": {
+                          "type": "integer"
+                        },
+                        "suspected": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "month": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "assigned": {
+                          "type": "integer"
+                        },
+                        "in_progress": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "cancelled": {
+                          "type": "integer"
+                        },
+                        "suspected": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduled-requests/{id}/": {
+      "get": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "operationId": "scheduled-requests_read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestDetail"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "operationId": "scheduled-requests_update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduledRequestUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestUpdate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "delete": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "operationId": "scheduled-requests_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "operationId": "scheduled-requests_partial_update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduledRequestUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestUpdate"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/scheduled-requests/{id}/assign/": {
+      "post": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Assign Collector",
+        "description": "Supervisor only: Assign a collector to a scheduled request.",
+        "operationId": "scheduled-requests_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "collector"
+                ],
+                "type": "object",
+                "properties": {
+                  "collector": {
+                    "type": "integer",
+                    "description": "Collector ID"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestDetail"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/scheduled-requests/{id}/cancel/": {
+      "post": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Cancel Scheduled Request",
+        "description": "Cancel a scheduled request with reason.",
+        "operationId": "scheduled-requests_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "cancellation_reason"
+                ],
+                "type": "object",
+                "properties": {
+                  "cancellation_reason": {
+                    "type": "string",
+                    "description": "Reason for cancellation"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestDetail"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/scheduled-requests/{id}/complete/": {
+      "post": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Complete Scheduled Request",
+        "description": "Collector marks scheduled request as completed. Enforces GPS validation.",
+        "operationId": "scheduled-requests_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "latitude",
+                  "longitude"
+                ],
+                "type": "object",
+                "properties": {
+                  "latitude": {
+                    "type": "number",
+                    "description": "Collector latitude"
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "description": "Collector longitude"
+                  },
+                  "bag_count": {
+                    "type": "integer",
+                    "description": "Bag count collected"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestDetail"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/scheduled-requests/{id}/start/": {
+      "post": {
+        "tags": [
+          "scheduled-requests"
+        ],
+        "summary": "Start Scheduled Request",
+        "description": "Mark a scheduled request as in progress.",
+        "operationId": "scheduled-requests_start",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "A unique integer value identifying this scheduled request.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "collector": {
+                    "type": "integer",
+                    "description": "Collector ID (optional if already assigned)"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduledRequestDetail"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/supervisor/create/": {
+      "post": {
+        "tags": [
+          "supervisor"
+        ],
+        "summary": "Create a new supervisor account.",
+        "description": "Must be an authenticated Waste management company to create supervisor account.\n\nThis endpoint registers a supervisor in two parts:\n- Creates a `User` record with role=\"supervisor\"\n- Creates the `Supervisor` profile linked to a specific Waste Management Company\n\n---\n### Required Fields\n- phone_number  \n- password  \n- company  \n\n### Optional Fields\n- email  \n- assigned_areas  \n- team_size  \n- photo_url  \n\n### Validation Rules\n- Phone number must be unique  \n- Email (if provided) must be unique  \n- Gracefully handles duplicate user errors  \n\n---\n### Successful Response (201 CREATED)\nReturns `SupervisorListSerializer` output:\n```json\n{\n    \"username\": \"SUP123\",\n    \"phone_number\": \"0551234567\",\n    \"assigned_areas\": [],\n    \"team_size\": 10,\n    \"is_active\": true\n}\n```\n\n### Error Responses\n- **400 Bad Request**\n  - Duplicate phone number or email  \n  - Missing required fields  \n  - Validation errors",
+        "operationId": "supervisor_create_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorList"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/supervisor/list/": {
+      "get": {
+        "tags": [
+          "supervisor"
+        ],
+        "summary": "Retrieve a list of all supervisors in the system.",
+        "description": "---\n### Response Fields (SupervisorListSerializer)\n- username  \n- phone_number  \n- company  \n- assigned_areas  \n- team_size  \n- is_active  \n\n---\n### Example Response (200 OK)\n```json\n[\n    {\n        \"username\": \"SUP001\",\n        \"phone_number\": \"0551112222\",\n        \"company\": 3,\n        \"assigned_areas\": [\"North Ridge\", \"Osu\"],\n        \"team_size\": 8,\n        \"is_active\": true\n    },\n    ...\n]\n```",
+        "operationId": "supervisor_list_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupervisorList"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supervisor/profile/": {
+      "get": {
+        "tags": [
+          "supervisor"
+        ],
+        "summary": "Retrieve Supervisor Profile",
+        "description": "\nReturns the complete profile of the authenticated supervisor.\n\n**Permissions:**  \n- Requires authentication (`IsAuthenticated`) as supervisor\n\n**Success Response:**\n- `200 OK` → SupervisorListSerializer data\n\n**Error Responses:**\n- `404 Not Found` → Profile does not exist\n",
+        "operationId": "supervisor_profile_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Supervisor profile not found",
+            "content": {}
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "supervisor"
+        ],
+        "summary": "Update Supervisor Profile (Full Update)",
+        "description": "\nFully updates the supervisor's profile.\n\n**Permissions:**  \n- Requires authentication (`IsAuthenticated`) as supervisor\n\n**Use When:**  \n- You want to update **all** fields.\n\n**Updatable Fields:**\n- assigned_areas  \n- team_size  \n- photo_url  \n- is_active (from User model)\n\n**Success Response:**\n- `200 OK`\n\n**Error Responses:**\n- `400 Bad Request` → Invalid fields\n- `404 Not Found` → Profile missing\n",
+        "operationId": "supervisor_profile_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "404": {
+            "description": "Supervisor profile not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "patch": {
+        "tags": [
+          "supervisor"
+        ],
+        "summary": "Partially Update Supervisor Profile",
+        "description": "\nPartially updates supervisor fields.  \n\n**Permissions:**  \n- Requires authentication (`IsAuthenticated`) as supervisor\n\nOnly send the fields you want to update.\n\n**Success Response:**\n- `200 OK`\n\n**Error Responses:**\n- `400 Bad Request`\n- `404 Not Found`\n",
+        "operationId": "supervisor_profile_partial_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "404": {
+            "description": "Supervisor profile not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/zones/check-point/": {
+      "post": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "Check which zone(s) contain a coordinate",
+        "operationId": "point_in_zone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number",
+                    "description": "Latitude",
+                    "example": 5.603718
+                  },
+                  "lng": {
+                    "type": "number",
+                    "description": "Longitude",
+                    "example": -0.187197
+                  }
+                },
+                "example": {
+                  "lat": 5.603718,
+                  "lng": -0.187197
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneList"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid data"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/zones/create/": {
+      "post": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "Create a new zone",
+        "operationId": "create_zone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid data"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    },
+    "/zones/list/": {
+      "get": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "List all zones",
+        "operationId": "list_zones",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "query",
+            "description": "Filter zones by city name (case-insensitive)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneList"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zones/{zone_id}/": {
+      "get": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "Retrieve a single zone",
+        "operationId": "retrieve_zone",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Zone not found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zones/{zone_id}/update/": {
+      "put": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "Fully update a zone",
+        "operationId": "update_zone",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid data"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Zone not found"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      },
+      "patch": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "Partially update a zone",
+        "operationId": "partial_update_zone",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid data"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Zone not found"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "data"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Login": {
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "title": "Identifier",
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "TokenRefreshCustom": {
+        "required": [
+          "refresh"
+        ],
+        "type": "object",
+        "properties": {
+          "refresh": {
+            "title": "Refresh",
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "ClientList": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "title": "Username",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "first_name": {
+            "title": "First name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "title": "Last name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean",
+            "readOnly": true
+          },
+          "registration_date": {
+            "title": "Registration date",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        }
+      },
+      "Client": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "title": "First name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "title": "Last name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "title": "Username",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "alternate_phone": {
+            "title": "Alternate phone",
+            "maxLength": 17,
+            "type": "string",
+            "nullable": true
+          },
+          "wallet_balance": {
+            "title": "Wallet balance",
+            "type": "string",
+            "format": "decimal",
+            "readOnly": true
+          },
+          "segregation_compliance_percent": {
+            "title": "Segregation compliance percent",
+            "type": "string",
+            "format": "decimal"
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean",
+            "readOnly": true
+          },
+          "registration_date": {
+            "title": "Registration date",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        }
+      },
+      "ClientUpdate": {
+        "required": [
+          "is_active"
+        ],
+        "type": "object",
+        "properties": {
+          "alternate_phone": {
+            "title": "Alternate phone",
+            "maxLength": 17,
+            "type": "string",
+            "nullable": true
+          },
+          "segregation_compliance_percent": {
+            "title": "Segregation compliance percent",
+            "type": "string",
+            "format": "decimal"
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean"
+          }
+        }
+      },
+      "ClientCreate": {
+        "required": [
+          "password",
+          "phone_number"
+        ],
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "title": "First name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "title": "Last name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "title": "Email",
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "CollectionRecord": {
+        "required": [
+          "collection_type",
+          "scheduled_date"
+        ],
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "title": "Collection id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "client_name": {
+            "title": "Client name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "collector_name": {
+            "title": "Collector name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "route_id": {
+            "title": "Route id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "stop_id": {
+            "title": "Stop id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "collection_type": {
+            "title": "Collection type",
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "on_demand"
+            ]
+          },
+          "scheduled_date": {
+            "title": "Scheduled date",
+            "type": "string",
+            "description": "Scheduled collection date",
+            "format": "date"
+          },
+          "collection_start": {
+            "title": "Collection start",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "collection_end": {
+            "title": "Collection end",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "collected_at": {
+            "title": "Collected at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "title": "Status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "skipped",
+              "cancelled",
+              "rejected"
+            ]
+          },
+          "payment_method": {
+            "title": "Payment method",
+            "type": "string",
+            "description": "Payment method indicated by collector",
+            "enum": [
+              "cash",
+              "momo",
+              "bank",
+              "later"
+            ]
+          },
+          "amount_paid": {
+            "title": "Amount paid",
+            "type": "string",
+            "description": "Amount paid by client at collection",
+            "format": "decimal"
+          },
+          "bag_count": {
+            "title": "Bag count",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "bin_size_liters": {
+            "title": "Bin size liters",
+            "type": "integer",
+            "nullable": true
+          },
+          "estimated_volume_liters": {
+            "title": "Estimated volume liters",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "waste_type": {
+            "title": "Waste type",
+            "type": "string",
+            "enum": [
+              "mixed",
+              "organic",
+              "recyclable",
+              "plastic",
+              "e-waste",
+              "bulk"
+            ]
+          },
+          "photo_before": {
+            "title": "Photo before",
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "readOnly": true
+          },
+          "photo_after": {
+            "title": "Photo after",
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "readOnly": true
+          },
+          "segregation_score": {
+            "title": "Segregation score",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer",
+            "nullable": true
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string",
+            "nullable": true
+          },
+          "duration_minutes": {
+            "title": "Duration minutes",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer",
+            "nullable": true
+          },
+          "volume_description": {
+            "title": "Volume description",
+            "type": "string",
+            "readOnly": true
+          },
+          "created_at": {
+            "title": "Created at",
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "title": "Updated at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        }
+      },
+      "CollectorList": {
+        "required": [
+          "assigned_area_zone",
+          "daily_wage_or_incentive_rate",
+          "vehicle_number",
+          "vehicle_type"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "title": "Username",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "company_name": {
+            "title": "Company name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "is_private_collector": {
+            "title": "Is private collector",
+            "type": "boolean"
+          },
+          "vehicle_number": {
+            "title": "Vehicle number",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "vehicle_type": {
+            "title": "Vehicle type",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "assigned_area_zone": {
+            "title": "Assigned area zone",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "daily_wage_or_incentive_rate": {
+            "title": "Daily wage or incentive rate",
+            "type": "string",
+            "format": "decimal"
+          },
+          "average_rating": {
+            "title": "Average rating",
+            "type": "string",
+            "format": "decimal"
+          },
+          "total_collections": {
+            "title": "Total collections",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean",
+            "readOnly": true
+          }
+        }
+      },
+      "CollectorUpdate": {
+        "required": [
+          "assigned_area_zone",
+          "daily_wage_or_incentive_rate",
+          "vehicle_number",
+          "vehicle_type"
+        ],
+        "type": "object",
+        "properties": {
+          "vehicle_number": {
+            "title": "Vehicle number",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "vehicle_type": {
+            "title": "Vehicle type",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "assigned_area_zone": {
+            "title": "Assigned area zone",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "daily_wage_or_incentive_rate": {
+            "title": "Daily wage or incentive rate",
+            "type": "string",
+            "format": "decimal"
+          },
+          "bank_account_details": {
+            "title": "Bank account details",
+            "type": "string",
+            "nullable": true
+          },
+          "last_known_latitude": {
+            "title": "Last known latitude",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "last_known_longitude": {
+            "title": "Last known longitude",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean"
+          }
+        }
+      },
+      "CollectorCreate": {
+        "required": [
+          "daily_wage_or_incentive_rate",
+          "first_name",
+          "last_name",
+          "password",
+          "phone_number",
+          "vehicle_number",
+          "vehicle_type"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "minLength": 1,
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First name",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last name",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "company": {
+            "title": "Company",
+            "type": "integer",
+            "nullable": true
+          },
+          "supervisor": {
+            "title": "Supervisor",
+            "type": "string",
+            "nullable": true
+          },
+          "is_private_collector": {
+            "title": "Is private collector",
+            "type": "boolean"
+          },
+          "vehicle_number": {
+            "title": "Vehicle number",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "vehicle_type": {
+            "title": "Vehicle type",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "daily_wage_or_incentive_rate": {
+            "title": "Daily wage or incentive rate",
+            "type": "string",
+            "format": "decimal"
+          },
+          "bank_account_details": {
+            "title": "Bank account details",
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Company": {
+        "required": [
+          "closing_time",
+          "company_name",
+          "complaint_resolution_sla",
+          "gst_number",
+          "opening_time",
+          "weighing_system"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "type": "integer",
+            "readOnly": true
+          },
+          "username": {
+            "title": "Username",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "email": {
+            "title": "Email",
+            "minLength": 1,
+            "type": "string",
+            "format": "email",
+            "readOnly": true
+          },
+          "profile_photo": {
+            "title": "Profile photo",
+            "type": "string",
+            "format": "uri",
+            "readOnly": true
+          },
+          "address": {
+            "title": "Address",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "is_verified": {
+            "title": "Is verified",
+            "type": "boolean",
+            "readOnly": true
+          },
+          "company_name": {
+            "title": "Company name",
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "gst_number": {
+            "title": "Gst number",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "weighing_system": {
+            "title": "Weighing system",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "working_days": {
+            "title": "Working days",
+            "type": "object",
+            "properties": {}
+          },
+          "opening_time": {
+            "title": "Opening time",
+            "type": "string"
+          },
+          "closing_time": {
+            "title": "Closing time",
+            "type": "string"
+          },
+          "price_min": {
+            "title": "Price min",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "price_max": {
+            "title": "Price max",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "incentive_per_100_percent_route": {
+            "title": "Incentive per 100 percent route",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "complaint_resolution_sla": {
+            "title": "Complaint resolution sla",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer",
+            "description": "SLA in hours"
+          },
+          "total_producers": {
+            "title": "Total producers",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          "total_collectors": {
+            "title": "Total collectors",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          "operational_cities": {
+            "title": "Operational cities",
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      "CompanyCreate": {
+        "required": [
+          "closing_time",
+          "company_name",
+          "complaint_resolution_sla",
+          "gst_number",
+          "opening_time",
+          "password",
+          "phone_number",
+          "working_days"
+        ],
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "minLength": 1,
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string",
+            "format": "email"
+          },
+          "profile_photo": {
+            "title": "Profile photo",
+            "type": "string",
+            "format": "uri"
+          },
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company name",
+            "minLength": 1,
+            "type": "string"
+          },
+          "gst_number": {
+            "title": "Gst number",
+            "minLength": 1,
+            "type": "string"
+          },
+          "complaint_resolution_sla": {
+            "title": "Complaint resolution sla",
+            "type": "integer"
+          },
+          "operational_cities": {
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "working_days": {
+            "title": "Working days",
+            "type": "object",
+            "properties": {}
+          },
+          "opening_time": {
+            "title": "Opening time",
+            "type": "string"
+          },
+          "closing_time": {
+            "title": "Closing time",
+            "type": "string"
+          },
+          "price_min": {
+            "title": "Price min",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "price_max": {
+            "title": "Price max",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          }
+        }
+      },
+      "Tokens": {
+        "required": [
+          "access",
+          "refresh"
+        ],
+        "type": "object",
+        "properties": {
+          "refresh": {
+            "title": "Refresh",
+            "minLength": 1,
+            "type": "string"
+          },
+          "access": {
+            "title": "Access",
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "CompanyWithTokens": {
+        "required": [
+          "company",
+          "tokens"
+        ],
+        "type": "object",
+        "properties": {
+          "company": {
+            "$ref": "#/components/schemas/Company"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/Tokens"
+          }
+        }
+      },
+      "OnDemandRequestDetail": {
+        "required": [
+          "address_line1",
+          "area_zone",
+          "city",
+          "client",
+          "pickup_date",
+          "pickup_time_slot",
+          "waste_type"
+        ],
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "title": "Request id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "client_name": {
+            "title": "Client name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "collector": {
+            "title": "Collector",
+            "type": "string",
+            "nullable": true
+          },
+          "collector_name": {
+            "title": "Collector name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "pickup_date": {
+            "title": "Pickup date",
+            "type": "string",
+            "format": "date"
+          },
+          "pickup_time_slot": {
+            "title": "Pickup time slot",
+            "type": "string",
+            "enum": [
+              "morning",
+              "afternoon",
+              "evening"
+            ]
+          },
+          "address_line1": {
+            "title": "Address line1",
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "landmark": {
+            "title": "Landmark",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "area_zone": {
+            "title": "Area zone",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "waste_type": {
+            "title": "Waste type",
+            "type": "string",
+            "enum": [
+              "wet",
+              "mixed",
+              "recyclable",
+              "e_waste",
+              "bulk",
+              "sanitary",
+              "hazardous",
+              "construction",
+              "household"
+            ]
+          },
+          "bag_count": {
+            "title": "Bag count",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "bin_size_liters": {
+            "title": "Bin size liters",
+            "type": "integer",
+            "nullable": true
+          },
+          "special_instructions": {
+            "title": "Special instructions",
+            "type": "string"
+          },
+          "waste_image": {
+            "title": "Waste image",
+            "type": "string",
+            "description": "Photo of the waste provided by client",
+            "format": "uri",
+            "nullable": true,
+            "readOnly": true
+          },
+          "quoted_price": {
+            "title": "Quoted price",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true,
+            "readOnly": true
+          },
+          "final_price": {
+            "title": "Final price",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true,
+            "readOnly": true
+          },
+          "payment_status": {
+            "title": "Payment status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "refunded"
+            ]
+          },
+          "request_status": {
+            "title": "Request status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "assigned",
+              "in_progress",
+              "completed",
+              "cancelled",
+              "rejected"
+            ]
+          },
+          "requested_at": {
+            "title": "Requested at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "accepted_at": {
+            "title": "Accepted at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "title": "Completed at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelled_at": {
+            "title": "Cancelled at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellation_reason": {
+            "title": "Cancellation reason",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updated_at": {
+            "title": "Updated at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        }
+      },
+      "OnDemandRequestCreate": {
+        "required": [
+          "address_line1",
+          "city",
+          "client",
+          "latitude",
+          "longitude",
+          "pickup_date",
+          "pickup_time_slot",
+          "waste_type"
+        ],
+        "type": "object",
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "pickup_date": {
+            "title": "Pickup date",
+            "type": "string",
+            "format": "date"
+          },
+          "pickup_time_slot": {
+            "title": "Pickup time slot",
+            "type": "string",
+            "enum": [
+              "morning",
+              "afternoon",
+              "evening"
+            ]
+          },
+          "address_line1": {
+            "title": "Address line1",
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "landmark": {
+            "title": "Landmark",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "string",
+            "format": "decimal"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "string",
+            "format": "decimal"
+          },
+          "waste_type": {
+            "title": "Waste type",
+            "type": "string",
+            "enum": [
+              "wet",
+              "mixed",
+              "recyclable",
+              "e_waste",
+              "bulk",
+              "sanitary",
+              "hazardous",
+              "construction",
+              "household"
+            ]
+          },
+          "bag_count": {
+            "title": "Bag count",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "bin_size_liters": {
+            "title": "Bin size liters",
+            "type": "integer",
+            "nullable": true
+          },
+          "special_instructions": {
+            "title": "Special instructions",
+            "type": "string"
+          },
+          "waste_image": {
+            "title": "Waste image",
+            "type": "string",
+            "description": "Photo of the waste provided by client",
+            "format": "uri",
+            "nullable": true,
+            "readOnly": true
+          }
+        }
+      },
+      "OnDemandRequestUpdate": {
+        "type": "object",
+        "properties": {
+          "collector": {
+            "title": "Collector",
+            "type": "string",
+            "nullable": true
+          },
+          "request_status": {
+            "title": "Request status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "assigned",
+              "in_progress",
+              "completed",
+              "cancelled",
+              "rejected"
+            ]
+          },
+          "final_price": {
+            "title": "Final price",
+            "type": "string",
+            "format": "decimal",
+            "nullable": true
+          },
+          "payment_status": {
+            "title": "Payment status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "refunded"
+            ]
+          },
+          "waste_image": {
+            "title": "Waste image",
+            "type": "string",
+            "description": "Photo of the waste provided by client",
+            "format": "uri",
+            "nullable": true,
+            "readOnly": true
+          },
+          "cancellation_reason": {
+            "title": "Cancellation reason",
+            "type": "string"
+          }
+        }
+      },
+      "ScheduledRequestDetail": {
+        "required": [
+          "address_line1",
+          "bin_size_liters",
+          "city",
+          "client",
+          "company",
+          "pickup_date",
+          "pickup_time_slot",
+          "waste_type"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "type": "integer",
+            "readOnly": true
+          },
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "client_name": {
+            "title": "Client name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "company": {
+            "title": "Company",
+            "type": "integer"
+          },
+          "company_name": {
+            "title": "Company name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "collector": {
+            "title": "Collector",
+            "type": "string",
+            "nullable": true
+          },
+          "collector_name": {
+            "title": "Collector name",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "pickup_date": {
+            "title": "Pickup date",
+            "type": "string",
+            "format": "date"
+          },
+          "pickup_time_slot": {
+            "title": "Pickup time slot",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recurrence": {
+            "title": "Recurrence",
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "address_line1": {
+            "title": "Address line1",
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "landmark": {
+            "title": "Landmark",
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "string",
+            "readOnly": true
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "string",
+            "readOnly": true
+          },
+          "waste_type": {
+            "title": "Waste type",
+            "type": "string",
+            "enum": [
+              "household",
+              "organic",
+              "mixed",
+              "recyclable",
+              "hazardous",
+              "sanitary",
+              "bulk",
+              "construction",
+              "ewaste"
+            ]
+          },
+          "bin_size_liters": {
+            "title": "Bin size liters",
+            "type": "integer"
+          },
+          "bag_count": {
+            "title": "Bag count",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "request_status": {
+            "title": "Request status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "assigned",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "requested_at": {
+            "title": "Requested at",
+            "type": "string",
+            "format": "date-time"
+          },
+          "accepted_at": {
+            "title": "Accepted at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "title": "Completed at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelled_at": {
+            "title": "Cancelled at",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellation_reason": {
+            "title": "Cancellation reason",
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "RouteStop": {
+        "required": [
+          "location",
+          "order"
+        ],
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "title": "Stop id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "order": {
+            "title": "Order",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "description": "1 means first stop in route"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "expected_minutes": {
+            "title": "Expected minutes",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Estimated time to complete this stop"
+          },
+          "actual_start": {
+            "title": "Actual start",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "actual_end": {
+            "title": "Actual end",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "title": "Status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "skipped",
+              "failed"
+            ]
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string",
+            "nullable": true
+          },
+          "ondemand_request": {
+            "$ref": "#/components/schemas/OnDemandRequestDetail"
+          },
+          "scheduled_request": {
+            "$ref": "#/components/schemas/ScheduledRequestDetail"
+          },
+          "request_type": {
+            "title": "Request type",
+            "type": "string",
+            "readOnly": true
+          },
+          "request_status": {
+            "title": "Request status",
+            "type": "string",
+            "readOnly": true
+          },
+          "client_name": {
+            "title": "Client name",
+            "type": "string",
+            "readOnly": true
+          }
+        }
+      },
+      "Route": {
+        "required": [
+          "collector",
+          "company",
+          "route_date",
+          "supervisor",
+          "zone"
+        ],
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "title": "Route id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "company": {
+            "title": "Company",
+            "type": "integer"
+          },
+          "zone": {
+            "title": "Zone",
+            "type": "integer"
+          },
+          "supervisor": {
+            "title": "Supervisor",
+            "type": "string"
+          },
+          "collector": {
+            "title": "Collector",
+            "type": "string"
+          },
+          "route_date": {
+            "title": "Route date",
+            "type": "string",
+            "format": "date"
+          },
+          "start_time": {
+            "title": "Start time",
+            "type": "string",
+            "nullable": true
+          },
+          "end_time": {
+            "title": "End time",
+            "type": "string",
+            "nullable": true
+          },
+          "actual_start": {
+            "title": "Actual start",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "actual_end": {
+            "title": "Actual end",
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completion_percent": {
+            "title": "Completion percent",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string",
+            "enum": [
+              "draft",
+              "assigned",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "total_distance_km": {
+            "title": "Total distance km",
+            "type": "string",
+            "format": "decimal"
+          },
+          "estimated_duration": {
+            "title": "Estimated duration",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updated_at": {
+            "title": "Updated at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "total_stops": {
+            "title": "Total stops",
+            "type": "string",
+            "readOnly": true
+          },
+          "completed_stops": {
+            "title": "Completed stops",
+            "type": "string",
+            "readOnly": true
+          },
+          "collector_name": {
+            "title": "Collector name",
+            "type": "string",
+            "readOnly": true
+          },
+          "supervisor_name": {
+            "title": "Supervisor name",
+            "type": "string",
+            "readOnly": true
+          },
+          "stops": {
+            "type": "array",
+            "readOnly": true,
+            "items": {
+              "$ref": "#/components/schemas/RouteStop"
+            }
+          }
+        }
+      },
+      "ScheduledRequestCreate": {
+        "required": [
+          "address_line1",
+          "bin_size_liters",
+          "city",
+          "client",
+          "company",
+          "latitude",
+          "longitude",
+          "pickup_date",
+          "pickup_time_slot",
+          "waste_type"
+        ],
+        "type": "object",
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "company": {
+            "title": "Company",
+            "type": "integer"
+          },
+          "collector": {
+            "title": "Collector",
+            "type": "string",
+            "nullable": true
+          },
+          "pickup_date": {
+            "title": "Pickup date",
+            "type": "string",
+            "format": "date"
+          },
+          "pickup_time_slot": {
+            "title": "Pickup time slot",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recurrence": {
+            "title": "Recurrence",
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "address_line1": {
+            "title": "Address line1",
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "landmark": {
+            "title": "Landmark",
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "waste_type": {
+            "title": "Waste type",
+            "type": "string",
+            "enum": [
+              "household",
+              "organic",
+              "mixed",
+              "recyclable",
+              "hazardous",
+              "sanitary",
+              "bulk",
+              "construction",
+              "ewaste"
+            ]
+          },
+          "bin_size_liters": {
+            "title": "Bin size liters",
+            "type": "integer"
+          },
+          "bag_count": {
+            "title": "Bag count",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      },
+      "ScheduledRequestUpdate": {
+        "required": [
+          "pickup_date",
+          "pickup_time_slot"
+        ],
+        "type": "object",
+        "properties": {
+          "collector": {
+            "title": "Collector",
+            "type": "string",
+            "nullable": true
+          },
+          "request_status": {
+            "title": "Request status",
+            "type": "string",
+            "enum": [
+              "pending",
+              "assigned",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "cancellation_reason": {
+            "title": "Cancellation reason",
+            "type": "string",
+            "nullable": true
+          },
+          "pickup_date": {
+            "title": "Pickup date",
+            "type": "string",
+            "format": "date"
+          },
+          "pickup_time_slot": {
+            "title": "Pickup time slot",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          }
+        }
+      },
+      "SupervisorCreate": {
+        "required": [
+          "password",
+          "phone_number"
+        ],
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "title": "First name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "title": "Last name",
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "title": "Email",
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "minLength": 1,
+            "type": "string"
+          },
+          "company_username": {
+            "title": "Company username",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "assigned_areas": {
+            "title": "Assigned areas",
+            "type": "object",
+            "properties": {}
+          },
+          "team_size": {
+            "title": "Team size",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          "photo_url": {
+            "title": "Photo url",
+            "maxLength": 200,
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          }
+        }
+      },
+      "SupervisorList": {
+        "required": [
+          "company_username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "title": "Username",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "phone_number": {
+            "title": "Phone number",
+            "minLength": 1,
+            "type": "string",
+            "readOnly": true
+          },
+          "company_username": {
+            "title": "Company username",
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "team_size": {
+            "title": "Team size",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          "assigned_areas": {
+            "title": "Assigned areas",
+            "type": "object",
+            "properties": {}
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean",
+            "readOnly": true
+          }
+        }
+      },
+      "SupervisorUpdate": {
+        "required": [
+          "is_active"
+        ],
+        "type": "object",
+        "properties": {
+          "assigned_areas": {
+            "title": "Assigned areas",
+            "type": "object",
+            "properties": {}
+          },
+          "team_size": {
+            "title": "Team size",
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          "photo_url": {
+            "title": "Photo url",
+            "maxLength": 200,
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean"
+          }
+        }
+      },
+      "ZoneList": {
+        "required": [
+          "boundary",
+          "city",
+          "name",
+          "zone_code"
+        ],
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "title": "Zone id",
+            "type": "integer",
+            "readOnly": true
+          },
+          "zone_code": {
+            "title": "Zone code",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string",
+            "description": "Unique zone code (e.g., ACC-OSU-01)"
+          },
+          "name": {
+            "title": "Name",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string",
+            "description": "Human-readable zone name (e.g., Osu Residential)"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "zone_type": {
+            "title": "Zone type",
+            "type": "string",
+            "enum": [
+              "residential",
+              "commercial",
+              "industrial",
+              "mixed",
+              "institutional"
+            ]
+          },
+          "center_point": {
+            "title": "Center point",
+            "type": "string",
+            "description": "Center point of zone (auto-calculated if not provided)"
+          },
+          "radius_meters": {
+            "title": "Radius meters",
+            "minimum": 0,
+            "type": "number",
+            "description": "Radius in meters (for circular zones only)",
+            "nullable": true
+          },
+          "population_density": {
+            "title": "Population density",
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "estimated_households": {
+            "title": "Estimated households",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "service_fee_multiplier": {
+            "title": "Service fee multiplier",
+            "type": "string",
+            "description": "Multiplier for base service fees",
+            "format": "decimal"
+          },
+          "default_collection_days": {
+            "title": "Default collection days",
+            "type": "object",
+            "properties": {},
+            "description": "Default collection days (e.g. ['monday', 'thursday'])"
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean",
+            "description": "Whether the zone is actively serviced"
+          },
+          "created_at": {
+            "title": "Created at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updated_at": {
+            "title": "Updated at",
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "boundary": {
+            "title": "Boundary",
+            "type": "string",
+            "description": "Polygon defining zone boundaries (GeoJSON/WKT)"
+          }
+        }
+      },
+      "ZoneCreate": {
+        "required": [
+          "boundary",
+          "city",
+          "name",
+          "zone_code"
+        ],
+        "type": "object",
+        "properties": {
+          "zone_code": {
+            "title": "Zone code",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string",
+            "description": "Unique zone code (e.g., ACC-OSU-01)"
+          },
+          "name": {
+            "title": "Name",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string",
+            "description": "Human-readable zone name (e.g., Osu Residential)"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "parent_zone": {
+            "title": "Parent zone",
+            "type": "integer",
+            "nullable": true
+          },
+          "zone_type": {
+            "title": "Zone type",
+            "type": "string",
+            "enum": [
+              "residential",
+              "commercial",
+              "industrial",
+              "mixed",
+              "institutional"
+            ]
+          },
+          "boundary": {
+            "title": "Boundary",
+            "type": "string",
+            "description": "Polygon defining zone boundaries (GeoJSON/WKT)"
+          },
+          "center_point": {
+            "title": "Center point",
+            "type": "string",
+            "description": "Center point of zone (auto-calculated if not provided)",
+            "readOnly": true
+          },
+          "radius_meters": {
+            "title": "Radius meters",
+            "minimum": 0,
+            "type": "number",
+            "description": "Radius in meters (for circular zones only)",
+            "nullable": true
+          },
+          "population_density": {
+            "title": "Population density",
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "estimated_households": {
+            "title": "Estimated households",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "service_fee_multiplier": {
+            "title": "Service fee multiplier",
+            "type": "string",
+            "description": "Multiplier for base service fees",
+            "format": "decimal"
+          },
+          "default_collection_days": {
+            "title": "Default collection days",
+            "type": "object",
+            "properties": {},
+            "description": "Default collection days (e.g. ['monday', 'thursday'])"
+          }
+        }
+      },
+      "ZoneUpdate": {
+        "required": [
+          "boundary",
+          "city",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string",
+            "description": "Human-readable zone name (e.g., Osu Residential)"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "parent_zone": {
+            "title": "Parent zone",
+            "type": "integer",
+            "nullable": true
+          },
+          "zone_type": {
+            "title": "Zone type",
+            "type": "string",
+            "enum": [
+              "residential",
+              "commercial",
+              "industrial",
+              "mixed",
+              "institutional"
+            ]
+          },
+          "boundary": {
+            "title": "Boundary",
+            "type": "string",
+            "description": "Polygon defining zone boundaries (GeoJSON/WKT)"
+          },
+          "center_point": {
+            "title": "Center point",
+            "type": "string",
+            "description": "Center point of zone (auto-calculated if not provided)"
+          },
+          "radius_meters": {
+            "title": "Radius meters",
+            "minimum": 0,
+            "type": "number",
+            "description": "Radius in meters (for circular zones only)",
+            "nullable": true
+          },
+          "population_density": {
+            "title": "Population density",
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "estimated_households": {
+            "title": "Estimated households",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "service_fee_multiplier": {
+            "title": "Service fee multiplier",
+            "type": "string",
+            "description": "Multiplier for base service fees",
+            "format": "decimal"
+          },
+          "default_collection_days": {
+            "title": "Default collection days",
+            "type": "object",
+            "properties": {},
+            "description": "Default collection days (e.g. ['monday', 'thursday'])"
+          },
+          "is_active": {
+            "title": "Is active",
+            "type": "boolean",
+            "description": "Whether the zone is actively serviced"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Basic": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

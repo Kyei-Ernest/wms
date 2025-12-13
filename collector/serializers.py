@@ -39,7 +39,6 @@ class CollectorSerializer(serializers.ModelSerializer):
             "vehicle_type",
             "assigned_area_zone",
 
-            "employment_type",
             "daily_wage_or_incentive_rate",
             "bank_account_details",
 
