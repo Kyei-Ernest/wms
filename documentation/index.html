@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borla Tracker - Backend Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #10b981;
+            --accent: #8b5cf6;
+            --bg-dark: #0f172a;
+            --bg-darker: #020617;
+            --text-light: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --code-bg: #1e293b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: var(--bg-darker);
+            color: var(--text-light);
+            line-height: 1.7;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-dark) 100%);
+            padding: 1.5rem 0;
+            border-bottom: 2px solid var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .logo span {
+            color: var(--secondary);
+        }
+
+        .nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .nav a:hover {
+            color: var(--secondary);
+        }
+
+        .hero {
+            padding: 3rem 0;
+            text-align: center;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+        }
+
+        .hero h1 {
+            font-size: 2.75rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, white 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.75rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-light);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .main-content {
+            display: flex;
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+
+        .sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .sidebar-nav {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+        }
+
+        .sidebar-nav h3 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 0.35rem;
+        }
+
+        .sidebar-nav a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background: var(--code-bg);
+            color: var(--secondary);
+            padding-left: 1rem;
+        }
+
+        .content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .section {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .section h2 {
+            font-size: 1.9rem;
+            margin-bottom: 1.25rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h3 {
+            font-size: 1.4rem;
+            margin: 2rem 0 1rem;
+            color: var(--secondary);
+        }
+
+        .section h4 {
+            font-size: 1.15rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-light);
+        }
+
+        .icon {
+            font-size: 1.4rem;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1.25rem;
+        }
+
+        .card {
+            background: var(--code-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
+        }
+
+        .card h4 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .card ul {
+            margin-top: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .card li {
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        code {
+            background: var(--code-bg);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--secondary);
+            font-size: 0.9em;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            padding: 1.25rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .code-block code {
+            background: transparent;
+            padding: 0;
+            color: var(--text-light);
+            white-space: pre;
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.25rem 0;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 0.9rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--code-bg);
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-info {
+            background: rgba(37, 99, 235, 0.2);
+            color: var(--primary);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-purple {
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--accent);
+        }
+
+        .footer {
+            background: var(--bg-dark);
+            padding: 2.5rem 0;
+            margin-top: 3rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            padding: 1.25rem;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 4px solid var(--accent);
+            padding: 1.25rem;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid var(--warning);
+            padding: 1.25rem;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+        }
+
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .tech-item {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .tech-item strong {
+            color: var(--secondary);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                position: static;
+                max-height: none;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">Borla <span>Tracker</span></div>
+                <nav class="nav">
+                    <a href="#overview">Overview</a>
+                    <a href="#architecture">Architecture</a>
+                    <a href="#setup">Setup</a>
+                    <a href="#business-logic">Business Logic</a>
+                    <a href="#api">API Reference</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Borla Tracker Backend Documentation</h1>
+            <p>Comprehensive documentation for the waste management system API - covering architecture, setup, business logic, and operational workflows</p>
+            <div class="cta-buttons">
+                <a href="https://kyei-ernest.github.io/wms/documentation/swagger/" class="btn btn-primary" target="_blank">
+                    🚀 Explore API (Swagger)
+                </a>
+                <a href="https://kyei-ernest.github.io/wms/documentation/redoc/" class="btn btn-secondary" target="_blank">
+                    📖 Reference Docs (ReDoc)
+                </a>
+                <a href="https://github.com/Kyei-Ernest/wms" class="btn btn-secondary" target="_blank">
+                    💻 GitHub Repository
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="main-content">
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <h3>Navigation</h3>
+                    <ul>
+                        <li><a href="#overview" class="active">Overview</a></li>
+                        <li><a href="#architecture">Architecture</a></li>
+                        <li><a href="#tech-stack">Technology Stack</a></li>
+                        <li><a href="#setup">Development Setup</a></li>
+                        <li><a href="#project-structure">Project Structure</a></li>
+                        <li><a href="#database">Database Schema</a></li>
+                        <li><a href="#business-logic">Business Logic</a></li>
+                        <li><a href="#actors">System Actors</a></li>
+                        <li><a href="#models">Domain Models</a></li>
+                        <li><a href="#authentication">Authentication</a></li>
+                        <li><a href="#error-handling">Error Handling</a></li>
+                        <li><a href="#api">API Endpoints</a></li>
+                        <li><a href="#workflows">Workflows</a></li>
+                        <li><a href="#background-tasks">Background Tasks</a></li>
+                        <li><a href="#testing">Testing</a></li>
+                        <li><a href="#nfr">NFR</a></li>
+                        <li><a href="#future">Future Work</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="content">
+                <section id="overview" class="section">
+                    <h2><span class="icon">🎯</span> Overview</h2>
+                    <p>The Borla Tracker API serves as the unified backend infrastructure for a comprehensive waste management system, providing digital transformation and operational efficiency for private collectors, company-employed collectors, supervisors, and clients. Built on a Django-powered architecture, the API delivers enterprise-grade functionality across all operational workflows.</p>
+                    
+                    <h3>Core Capabilities</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Smart Assignment</h4>
+                            <p>Efficient assignment of collectors for on-demand and scheduled collection requests through geospatial PostgreSQL queries.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Supervisor Tools</h4>
+                            <p>Real-time visibility into route execution, collector progress, and performance metrics with live GPS tracking.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Client Experience</h4>
+                            <p>Secure, role-based API access for request creation, collection tracking, and wallet management.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Business Automation</h4>
+                            <p>Automated incentive distribution, penalty assessment, and compliance monitoring through background Celery tasks.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Audit Trail</h4>
+                            <p>Immutable, audit-ready records in PostgreSQL with secure S3-backed file storage.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="architecture" class="section">
+                    <h2><span class="icon">🏗️</span> Architecture Overview</h2>
+                    <p>The system leverages a robust, scalable stack centered on Django for backend services, ensuring production-grade stability with Django and Django REST Framework for modular API development.</p>
+                    
+                    <div class="highlight-box">
+                        <h4>Architecture Principles</h4>
+                        <ul>
+                            <li><strong>Domain-Driven Design:</strong> Modular Django apps organized by business domains</li>
+                            <li><strong>RESTful API:</strong> Django REST Framework with automated OpenAPI documentation</li>
+                            <li><strong>Geospatial Capabilities:</strong> PostgreSQL with PostGIS for GPS validation and routing</li>
+                            <li><strong>Async Processing:</strong> Celery for background tasks and notifications</li>
+                            <li><strong>Containerized Deployment:</strong> Docker and Kubernetes for scalability</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="tech-stack" class="section">
+                    <h2><span class="icon">⚙️</span> Technology Stack</h2>
+                    
+                    <h3>Core Frameworks</h3>
+                    <div class="tech-stack">
+                        <div class="tech-item">
+                            <strong>Django v5.2.7</strong>
+                            <p>Stable LTS release for core business logic and security</p>
+                        </div>
+                        <div class="tech-item">
+                            <strong>Django REST Framework v3.16.1</strong>
+                            <p>RESTful APIs with serializers and RBAC</p>
+                        </div>
+                    </div>
+
+                    <h3>Database</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>PostgreSQL</h4>
+                            <span class="badge badge-success">Primary</span>
+                            <p>Primary relational database with PostGIS for geospatial features like GPS validation and route optimization.</p>
+                        </div>
+                        <div class="card">
+                            <h4>SQLite</h4>
+                            <span class="badge badge-info">Development</span>
+                            <p>Limited to local development and testing environments.</p>
+                        </div>
+                    </div>
+
+                    <h3>Caching & Task Queue</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Redis</h4>
+                            <p>Manages sessions, request/response caching, and real-time GPS updates. Also serves as Celery broker.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Celery</h4>
+                            <p>Processes asynchronous tasks such as incentive calculations, notifications, and route optimization.</p>
+                        </div>
+                    </div>
+
+                    <h3>File Storage & Deployment</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Amazon S3</h4>
+                            <span class="badge badge-success">Production</span>
+                            <p>Production storage for evidence photos and client uploads.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Docker + Kubernetes</h4>
+                            <p>Containerizes services for consistent portability and orchestrates scaling for 99.9% uptime.</p>
+                        </div>
+                        <div class="card">
+                            <h4>CI/CD</h4>
+                            <p>GitHub Actions automates builds, testing, and rollouts to Docker/K8s environments.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="setup" class="section">
+                    <h2><span class="icon">🚀</span> Development Setup</h2>
+                    
+                    <h3>Prerequisites</h3>
+                    <ul>
+                        <li><strong>Python v3.11+:</strong> Core runtime for Django and DRF</li>
+                        <li><strong>PostgreSQL with PostGIS:</strong> Relational database with geospatial extensions</li>
+                        <li><strong>Redis:</strong> Caching and Celery broker</li>
+                        <li><strong>Git:</strong> Version control</li>
+                        <li><strong>Docker:</strong> Optional for containerized workflows</li>
+                    </ul>
+
+                    <h3>Installation Steps</h3>
+                    <div class="code-block"><code># Clone repository
+git clone https://github.com/Kyei-Ernest/wms.git
+cd waste-management-api
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
+
+# Install dependencies
+pip install -r requirements.txt</code></div>
+
+                    <h3>Environment Configuration</h3>
+                    <p>Create a <code>.env</code> file in the project root:</p>
+                    <div class="code-block"><code># Django
+DJANGO_SECRET_KEY=your-secret-key
+DJANGO_DEBUG=True
+
+# Allowed Hosts
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,your-domain.com
+
+# CORS & CSRF
+CORS_ALLOW_ALL_ORIGINS=True
+CSRF_TRUSTED_ORIGINS=https://your-domain.com
+
+# Database
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+DB_HOST=localhost
+DB_PORT=5432
+
+# JWT
+ACCESS_TOKEN_LIFETIME_DAYS=1
+REFRESH_TOKEN_LIFETIME_DAYS=7</code></div>
+
+                    <h3>Database & Server Startup</h3>
+                    <div class="code-block"><code># Apply migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# Enable PostGIS (in PostgreSQL)
+CREATE EXTENSION postgis;
+
+# Start development server
+python manage.py runserver</code></div>
+                </section>
+
+                <section id="project-structure" class="section">
+                    <h2><span class="icon">📁</span> Project Structure</h2>
+                    <p>The project adopts a domain-driven Django architecture with modular apps organized by actor responsibilities and business domains.</p>
+
+                    <div class="code-block"><code>borla_master/              # Django project root
+│
+├── manage.py              # Entry point for CLI commands
+├── requirements.txt       # Python dependencies
+├── .env                   # Environment variables
+│
+├── borla_master/          # Global config
+│   ├── settings.py        # Environment-aware settings
+│   ├── urls.py            # Root URL routing
+│   ├── wsgi.py            # WSGI entrypoint
+│   └── asgi.py            # ASGI entrypoint
+│
+├── accounts/              # Authentication, user roles, RBAC
+├── client/                # Client registration, requests, wallet
+├── collector/             # Collector onboarding, assignment
+├── supervisor/            # Route generation, dashboards
+├── company/               # Supervisor creation, collector approval
+├── on_demand/             # OnDemandRequest model & views
+├── scheduled_request/     # ScheduledRequest & recurrence logic
+├── routes/                # Route + RouteStop models
+├── collection_management/ # CollectionRecord, audit logging
+├── zones/                 # GIS zones, geospatial logic
+├── documentation/         # Swagger, Redoc, diagrams
+└── waste_management/      # Shared utilities, base models</code></div>
+
+                    <h3>Domain Apps Overview</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>App</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>accounts</strong></td><td>User authentication, role-based access control</td></tr>
+                            <tr><td><strong>client</strong></td><td>Request creation, wallet management, tracking</td></tr>
+                            <tr><td><strong>collector</strong></td><td>Onboarding, GPS evidence submission, assignment</td></tr>
+                            <tr><td><strong>supervisor</strong></td><td>Route generation, performance dashboards</td></tr>
+                            <tr><td><strong>company</strong></td><td>Supervisor management, collector approval</td></tr>
+                            <tr><td><strong>routes</strong></td><td>RouteStop models, geospatial optimization</td></tr>
+                            <tr><td><strong>collection_management</strong></td><td>Immutable audit trails, compliance scoring</td></tr>
+                            <tr><td><strong>zones</strong></td><td>GIS boundary definitions, spatial queries</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="database" class="section">
+                    <h2><span class="icon">🗄️</span> Database Schema</h2>
+                    <p>The database schema follows a normalized PostgreSQL structure with PostGIS extensions, modeling core waste management entities through Django ORM.</p>
+
+                    <h3>Entity Relationships</h3>
+                    <div class="code-block"><code>Users → Clients, Collectors, Supervisors, Company (inheritance)
+├── Clients → OnDemandRequest, ScheduledRequest
+├── Collectors → Routes (execution), CollectionRecords (logging)
+├── Supervisors → Routes (oversight)
+├── Routes → RouteStops (composition)
+└── CollectionRecord → Payment, AuditTrail (immutable)</code></div>
+
+                    <div class="info-box">
+                        <h4>🔗 View Complete ERD Diagram</h4>
+                        <p>For the complete entity relationship diagram showing all tables, foreign keys, and constraints, please refer to the full documentation or database design diagrams.</p>
+                    </div>
+
+                    <h3>Migration Strategy</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Development</h4>
+                            <div class="code-block"><code>python manage.py makemigrations
+python manage.py migrate</code></div>
+                        </div>
+                        <div class="card">
+                            <h4>Production</h4>
+                            <ul>
+                                <li>Create PostgreSQL backup before changes</li>
+                                <li>Deploy incrementally with zero-downtime</li>
+                                <li>Use atomic transactions</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="business-logic" class="section">
+                    <h2><span class="icon">💡</span> Business Logic Implementation</h2>
+                    
+                    <h3>Pricing Algorithm</h3>
+                    <p>The pricing algorithm calculates service fees based on multiple factors to ensure fair and zone-appropriate pricing.</p>
+
+                    <div class="highlight-box">
+                        <h4>Pricing Formula</h4>
+                        <code>Final Price = (Base Rate × Bag Count or Bin Size) × Waste Type Multiplier × Zone Factor</code>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Multipliers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Waste Type</strong></td>
+                                <td>Hazardous (2.0×), Recyclables (0.8×), General (1.0×)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Zone Factor</strong></td>
+                                <td>High-density zones (1.2×), Low-density zones (1.0×)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p><strong>Discount Application:</strong> Discounts are applied after final price calculation for clients with active subscriptions or qualifying loyalty tier status.</p>
+
+                    <h3>Route Optimization Algorithm</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>1. Input Parameters</h4>
+                            <p>Consolidated list of requests with GPS coordinates and time preferences.</p>
+                        </div>
+                        <div class="card">
+                            <h4>2. Processing Steps</h4>
+                            <ul>
+                                <li>Group requests by geographic zone</li>
+                                <li>Apply nearest-neighbor heuristic</li>
+                                <li>Adjust for time slot requirements</li>
+                                <li>Allow supervisor override</li>
+                            </ul>
+                        </div>
+                        <div class="card">
+                            <h4>3. Output</h4>
+                            <p>Optimized route with ordered stops, estimated duration, and total distance.</p>
+                        </div>
+                    </div>
+
+                    <h3>Auto-Assignment Logic</h3>
+                    <p>The auto-assignment system matches collection requests with appropriate collectors based on multiple criteria:</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Criteria</th>
+                                <th>Requirements</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Availability</strong></td><td>No overlapping route assignments</td></tr>
+                            <tr><td><strong>Proximity</strong></td><td>Within acceptable GPS radius of service area</td></tr>
+                            <tr><td><strong>Rating</strong></td><td>Meets minimum threshold for sensitive waste types</td></tr>
+                            <tr><td><strong>Classification</strong></td><td>Company collectors (supervisor approval) vs private contractors</td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="warning-box">
+                        <h4>Escalation Protocol</h4>
+                        <p>When no collector meets the assignment criteria, the request is escalated to the supervisor for manual assignment and review.</p>
+                    </div>
+
+                    <h3>Incentive and Penalty Calculation</h3>
+                    
+                    <div class="highlight-box">
+                        <h4>Calculation Formula</h4>
+                        <code>Net Incentive = Base Incentive + Compliance Bonus − Penalty Deductions</code>
+                    </div>
+
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Incentive Structure</h4>
+                            <ul>
+                                <li>Base incentive per completed request</li>
+                                <li>Segregation compliance ≥ 90%</li>
+                                <li>Punctuality (±10 minutes)</li>
+                                <li>High client ratings</li>
+                            </ul>
+                        </div>
+                        <div class="card">
+                            <h4>Penalty Structure</h4>
+                            <ul>
+                                <li>GPS mismatch (>100m from stop)</li>
+                                <li>Missed stops without valid reason</li>
+                                <li>Segregation compliance < 70%</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3>GPS Proximity Validation</h3>
+                    <p>The system validates collector location to ensure service delivery at the correct address.</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Acceptable Radius</strong></td><td>100 meters from registered pickup location</td></tr>
+                            <tr><td><strong>Poor GPS Signal</strong></td><td>Extended to 150 meters under signal degradation</td></tr>
+                            <tr><td><strong>Multi-Unit Complexes</strong></td><td>Supervisor override available for large properties</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Segregation Scoring</h3>
+                    <p>The segregation scoring system evaluates waste separation quality through photographic evidence.</p>
+
+                    <ol>
+                        <li><strong>Evidence Submission:</strong> Collectors submit photos of segregated waste</li>
+                        <li><strong>Scoring Methodology:</strong> Identify correctly segregated bags by category (organic, recyclable, hazardous)</li>
+                        <li><strong>Calculate Compliance:</strong> Generate weighted average for final segregation score</li>
+                    </ol>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Score Range</th>
+                                <th>Outcome</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>≥ 90%</strong></td><td>Qualifies for incentive bonus</td></tr>
+                            <tr><td><strong>70–89%</strong></td><td>Neutral (no bonus or penalty)</td></tr>
+                            <tr><td><strong>< 70%</strong></td><td>Penalty applied to compensation</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="actors" class="section">
+                    <h2><span class="icon">👥</span> System Actors</h2>
+                    
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Client</h4>
+                            <span class="badge badge-info">End User</span>
+                            <p>End-user who creates requests (on-demand or scheduled), pays for services, and tracks status.</p>
+                            <ul>
+                                <li>Creates on-demand requests</li>
+                                <li>Schedules recurring pickups</li>
+                                <li>Tracks collection status</li>
+                                <li>Manages wallet payments</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Collector</h4>
+                            <span class="badge badge-success">Worker</span>
+                            <p>Worker who performs waste collection.</p>
+                            <ul>
+                                <li><strong>Private:</strong> Self-registered independent contractors</li>
+                                <li><strong>Company:</strong> Created/approved by company and supervised</li>
+                                <li>Performs waste collection</li>
+                                <li>Updates real-time status</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Supervisor</h4>
+                            <span class="badge badge-purple">Manager</span>
+                            <p>Oversees company collectors, monitors routes, approves registrations, and ensures compliance.</p>
+                            <ul>
+                                <li>Oversees company collectors</li>
+                                <li>Monitors route progress</li>
+                                <li>Approves registrations</li>
+                                <li>Ensures compliance</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Company</h4>
+                            <span class="badge badge-warning">Organization</span>
+                            <p>Organizational entity that creates supervisors, manages collectors, and owns routes.</p>
+                            <ul>
+                                <li>Creates supervisors</li>
+                                <li>Manages collectors</li>
+                                <li>Owns routes</li>
+                                <li>Tracks performance</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Admin</h4>
+                            <span class="badge badge-warning">System</span>
+                            <p>System-level actor who manages roles, monitors statistics, and ensures platform integrity.</p>
+                            <ul>
+                                <li>System-level management</li>
+                                <li>Role administration</li>
+                                <li>Platform monitoring</li>
+                                <li>Statistics oversight</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <h4>🔗 View Use Case Diagram</h4>
+                        <p>For a visual representation of actor interactions and system use cases, refer to the complete documentation diagrams.</p>
+                    </div>
+                </section>
+
+                <section id="models" class="section">
+                    <h2><span class="icon">🗂️</span> Domain Models</h2>
+                    
+                    <h3>User Models</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Key Fields</th>
+                                <th>Methods</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>User</strong></td>
+                                <td>username, phone_number, email, role, profile_photo, address, is_verified, is_active</td>
+                                <td>save(), __str__()</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Client</strong></td>
+                                <td>first_name, last_name, wallet_balance, segregation_compliance_percent</td>
+                                <td>__str__()</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Collector</strong></td>
+                                <td>company, supervisor, is_private_collector, vehicle_type, assigned_area_zone, average_rating</td>
+                                <td>full_name(), __str__()</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Supervisor</strong></td>
+                                <td>first_name, last_name, assigned_zone</td>
+                                <td>__str__()</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Company</strong></td>
+                                <td>name, registration_number, address</td>
+                                <td>__str__()</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Request Models</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>OnDemandRequest</h4>
+                            <p><strong>Fields:</strong> pickup_date, pickup_time_slot, address_line1, latitude, longitude, bag_count, bin_size_liters, waste_type, quoted_price, final_price, payment_status, request_status</p>
+                            <p><strong>Methods:</strong> calculate_quoted_price(), save(), __str__()</p>
+                        </div>
+                        <div class="card">
+                            <h4>ScheduledRequest</h4>
+                            <p><strong>Fields:</strong> pickup_date, pickup_time_slot, recurrence, request_status</p>
+                            <p><strong>Methods:</strong> __str__()</p>
+                        </div>
+                    </div>
+
+                    <h3>Operational Models</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Key Fields</th>
+                                <th>Methods</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Route</strong></td>
+                                <td>route_date, start_time, end_time, completion_percent, status, total_distance_km</td>
+                                <td>update_distance_and_duration(), update_completion_status()</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RouteStop</strong></td>
+                                <td>order, expected_minutes, actual_start, actual_end, status, notes</td>
+                                <td>__str__()</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CollectionRecord</strong></td>
+                                <td>payment_method, amount_paid, bag_count, waste_type, photo_before, photo_after, segregation_score, latitude, longitude</td>
+                                <td>save(), get_volume_description(), verify_location()</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <h4>Model Relationships</h4>
+                        <ul>
+                            <li><strong>Inheritance:</strong> Client, Collector, Company, Supervisor extend User</li>
+                            <li><strong>Company → Supervisor/Collector:</strong> Company creates and manages</li>
+                            <li><strong>Client → Requests:</strong> Creates OnDemandRequest and ScheduledRequest</li>
+                            <li><strong>Collector → Records:</strong> Executes requests and logs CollectionRecords</li>
+                            <li><strong>Route → RouteStop:</strong> Contains stops linked to requests</li>
+                            <li><strong>CollectionRecord:</strong> Immutable evidence tying actors and operations</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box">
+                        <h4>🔗 View UML Diagram</h4>
+                        <p>For a complete UML class diagram with all relationships and methods, refer to the full documentation.</p>
+                    </div>
+                </section>
+
+                <section id="authentication" class="section">
+                    <h2><span class="icon">🔐</span> Authentication & Authorization</h2>
+                    
+                    <h3>JWT Token-Based Authentication</h3>
+                    <p>The API uses JSON Web Tokens (JWT) for secure, stateless authentication. Upon successful login, two tokens are issued:</p>
+
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Access Token</h4>
+                            <span class="badge badge-success">Short-lived</span>
+                            <p>Used to authenticate API requests. Include in all protected endpoints.</p>
+                            <div class="code-block"><code>Authorization: Bearer &lt;access_token&gt;</code></div>
+                        </div>
+                        <div class="card">
+                            <h4>Refresh Token</h4>
+                            <span class="badge badge-info">Long-lived</span>
+                            <p>Used to obtain new access tokens when they expire without re-authentication.</p>
+                        </div>
+                    </div>
+
+                    <h3>Token Lifecycle</h3>
+                    <ul>
+                        <li>Access tokens expire automatically after a defined duration (configurable in .env)</li>
+                        <li>Refresh tokens are used to generate new access tokens without re-authentication</li>
+                        <li>During logout, refresh tokens are invalidated to prevent reuse</li>
+                    </ul>
+
+                    <h3>Role-Based Access Control</h3>
+                    <p>Access to resources and actions is strictly controlled based on user roles:</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Permissions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Client</strong></td><td>Create and track own requests, manage payments</td></tr>
+                            <tr><td><strong>Collector</strong></td><td>View and update assigned requests only</td></tr>
+                            <tr><td><strong>Supervisor</strong></td><td>Assign collectors, monitor routes, view company data</td></tr>
+                            <tr><td><strong>Company</strong></td><td>Manage supervisors, collectors, and routes</td></tr>
+                            <tr><td><strong>Admin</strong></td><td>System-wide visibility and control</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Security Measures</h3>
+                    <div class="highlight-box">
+                        <ul>
+                            <li>User credentials are securely hashed (never stored in plain text)</li>
+                            <li>JWT tokens validated on every protected request</li>
+                            <li>Role-based access control prevents unauthorized operations</li>
+                            <li>GPS proximity validation reduces fraudulent confirmations</li>
+                            <li>Collection records are immutable for audit integrity</li>
+                            <li>Query results automatically filtered to prevent data leakage</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="error-handling" class="section">
+                    <h2><span class="icon">⚠️</span> Error Handling & Status Codes</h2>
+                    
+                    <p>The API follows standard HTTP status codes for consistent error communication. Error responses are returned in consistent JSON format for predictable client-side handling.</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Status Code</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge badge-success">200</span></td>
+                                <td>Request completed successfully</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-success">201</span></td>
+                                <td>Resource created successfully</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">400</span></td>
+                                <td>Invalid request or validation error</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">401</span></td>
+                                <td>Unauthorized (missing or invalid token)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">403</span></td>
+                                <td>Forbidden (insufficient permissions)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">404</span></td>
+                                <td>Resource not found</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">500</span></td>
+                                <td>Internal server error</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Access Control Model</h3>
+                    <ul>
+                        <li>Authentication handled globally using JWT</li>
+                        <li>Authorization enforced through role-aware permissions</li>
+                        <li>Users can only access resources relevant to their role</li>
+                        <li>Query results automatically filtered to prevent data leakage</li>
+                        <li>Sensitive actions require elevated privileges (supervisor/admin roles)</li>
+                    </ul>
+                </section>
+
+                <section id="api" class="section">
+                    <h2><span class="icon">🔌</span> API Endpoints</h2>
+                    
+                    <div class="highlight-box">
+                        <h4>📚 Complete API Reference</h4>
+                        <p>The API exposes its endpoints through auto-generated OpenAPI documentation. These serve as the authoritative reference for all available resources, schemas, and authentication requirements.</p>
+                    </div>
+
+                    <div class="cards">
+                        <div class="card">
+                            <h4>🚀 Swagger UI</h4>
+                            <span class="badge badge-success">Interactive</span>
+                            <p>Interactive interface for exploring and testing endpoints in real-time.</p>
+                            <ul>
+                                <li>Browse all available endpoints</li>
+                                <li>View request/response schemas</li>
+                                <li>Test with authentication</li>
+                                <li>See example responses</li>
+                            </ul>
+                            <a href="https://kyei-ernest.github.io/wms/documentation/swagger/" class="btn btn-primary" target="_blank" style="margin-top: 1rem; display: inline-block;">Open Swagger UI →</a>
+                        </div>
+
+                        <div class="card">
+                            <h4>📖 ReDoc</h4>
+                            <span class="badge badge-info">Reference</span>
+                            <p>Clean, read-only reference optimized for clarity and documentation.</p>
+                            <ul>
+                                <li>Structured navigation</li>
+                                <li>Clear model documentation</li>
+                                <li>Authentication requirements</li>
+                                <li>External partner friendly</li>
+                            </ul>
+                            <a href="https://kyei-ernest.github.io/wms/documentation/redoc/" class="btn btn-secondary" target="_blank" style="margin-top: 1rem; display: inline-block;">Open ReDoc →</a>
+                        </div>
+                    </div>
+
+                    <h3>What's Included</h3>
+                    <ul style="columns: 2; column-gap: 2rem; margin-top: 1rem;">
+                        <li>All available API endpoints</li>
+                        <li>HTTP methods (GET, POST, PUT, PATCH, DELETE)</li>
+                        <li>Request parameters and body schemas</li>
+                        <li>Response payloads and error formats</li>
+                        <li>Authentication mechanisms (JWT)</li>
+                        <li>Role-based access constraints</li>
+                    </ul>
+                </section>
+
+                <section id="workflows" class="section">
+                    <h2><span class="icon">🔄</span> Operational Workflows</h2>
+                    
+                    <h3>1. Client Workflows</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Account Registration</h4>
+                            <p>Client creates a user account with profile information.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Create On-Demand Request</h4>
+                            <p>Submit one-time pickup request with location and waste details.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Create Scheduled Request</h4>
+                            <p>Set up recurring pickups with custom frequency.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Track Request Status</h4>
+                            <p>Monitor collection progress in real-time.</p>
+                        </div>
+                    </div>
+
+                    <h3>2. Collector Workflows</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Private Collector Registration</h4>
+                            <p>Self-register as independent contractor.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Company Collector Onboarding</h4>
+                            <p>Created by company, approved by supervisor.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Accept Assigned Request</h4>
+                            <p>Accept on-demand or scheduled assignments.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Update Collection Status</h4>
+                            <p>Mark as in-progress, completed, or skipped.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Upload Evidence</h4>
+                            <p>Submit before/after photos, notes, payment info.</p>
+                        </div>
+                        <div class="card">
+                            <h4>GPS Validation</h4>
+                            <p>Share live location for completion verification.</p>
+                        </div>
+                    </div>
+
+                    <h3>3. Supervisor Workflows</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Approve Collectors</h4>
+                            <p>Validate new company collector accounts.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Monitor Routes</h4>
+                            <p>Track route progress and completion percentage.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Performance Dashboard</h4>
+                            <p>Review collector stats, compliance, and KPIs.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Generate Routes</h4>
+                            <p>Create weekly routes with optimized stops.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Assign Collectors</h4>
+                            <p>Assign collectors to specific routes.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Handle Escalations</h4>
+                            <p>Manually assign requests if auto-assignment fails.</p>
+                        </div>
+                    </div>
+
+                    <h3>4. Company Workflows</h3>
+                    <ul>
+                        <li><strong>Create Supervisor:</strong> Register supervisors for zones</li>
+                        <li><strong>Create Company Collector:</strong> Add collector accounts</li>
+                        <li><strong>Approve Registrations:</strong> Validate pending collector accounts</li>
+                    </ul>
+
+                    <h3>5. Admin Workflows</h3>
+                    <ul>
+                        <li><strong>View System Statistics:</strong> Monitor system-wide KPIs and operational metrics</li>
+                    </ul>
+
+                    <h3>6. System Workflows (Automated)</h3>
+                    <ul>
+                        <li><strong>Route Completion Update:</strong> Recalculate completion % based on stop statuses</li>
+                        <li><strong>Incentive Calculation:</strong> Reward based on compliance, punctuality, ratings</li>
+                        <li><strong>Penalty Calculation:</strong> Penalize for missed stops, low compliance, GPS mismatch</li>
+                        <li><strong>Pricing Calculation:</strong> Compute quoted price based on bag/bin size and waste type</li>
+                        <li><strong>Compliance Validation:</strong> Check segregation compliance and flag violations</li>
+                        <li><strong>Audit Logging:</strong> Record immutable collection evidence</li>
+                    </ul>
+                </section>
+
+                <section id="background-tasks" class="section">
+                    <h2><span class="icon">⏰</span> Background Tasks</h2>
+                    <p>Celery orchestrates scheduled and asynchronous operations across priority queues, leveraging Redis as broker for high-throughput workflows.</p>
+
+                    <h3>Scheduled Tasks</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Frequency</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Incentive/Penalty Calculation</strong></td><td>Nightly</td><td>Batch processing of compliance scores and collector bonuses</td></tr>
+                            <tr><td><strong>Weekly Route Generation</strong></td><td>Sunday evening</td><td>Pre-computation of supervisor routes with optimization</td></tr>
+                            <tr><td><strong>Wallet Settlement</strong></td><td>Daily</td><td>Payment reconciliation and balance updates</td></tr>
+                            <tr><td><strong>Cleanup Jobs</strong></td><td>Daily</td><td>Remove expired sessions, stale GPS logs, soft-deleted records</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Async Operations</h3>
+                    <ul>
+                        <li><strong>Notification Dispatch:</strong> Non-blocking SMS, email, and push notifications</li>
+                        <li><strong>Evidence Processing:</strong> S3/Cloudinary uploads for photos with background segregation scoring</li>
+                        <li><strong>Audit Logging:</strong> Immutable CollectionRecords created without API blocking</li>
+                    </ul>
+
+                    <h3>Queue Management</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Priority Levels</h4>
+                            <ul>
+                                <li><strong>High:</strong> Notifications, GPS validation, auto-assignment</li>
+                                <li><strong>Medium:</strong> Incentives, segregation scoring</li>
+                                <li><strong>Low:</strong> Analytics, cleanup</li>
+                            </ul>
+                        </div>
+                        <div class="card">
+                            <h4>Retry Policies</h4>
+                            <ul>
+                                <li>Exponential backoff (max 3 retries)</li>
+                                <li>Idempotency for settlements</li>
+                                <li>Circuit breakers for failures</li>
+                                <li>Flower monitoring for workers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="testing" class="section">
+                    <h2><span class="icon">🧪</span> Testing Standards</h2>
+                    
+                    <div class="highlight-box">
+                        <h4>Coverage Requirements</h4>
+                        <p>Minimum 80% test coverage across models, serializers, views, and critical business logic paths (pricing, GPS validation, assignment).</p>
+                    </div>
+
+                    <h3>Unit Tests</h3>
+                    <div class="code-block"><code># Run all tests
+python manage.py test
+
+# Or use pytest
+pytest --cov=apps/</code></div>
+
+                    <h3>Integration Tests</h3>
+                    <p>Django TestCase with PostGIS fixtures simulating full workflows. Includes mocks for:</p>
+                    <ul>
+                        <li>Redis caching layer</li>
+                        <li>S3 file storage</li>
+                        <li>Payment gateway integrations</li>
+                        <li>Notification services</li>
+                    </ul>
+
+                    <h3>Test Fixtures</h3>
+                    <div class="code-block"><code>python manage.py loaddata test_clients.json</code></div>
+
+                    <h3>Code Standards</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aspect</th>
+                                <th>Standard</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Style Guide</strong></td><td>PEP 8 via Black/Flake8</td></tr>
+                            <tr><td><strong>Naming</strong></td><td>Models (singular), Serializers/ViewSets (suffixed), URLs (plural)</td></tr>
+                            <tr><td><strong>Documentation</strong></td><td>Google-style docstrings, annotated Swagger/Redoc endpoints</td></tr>
+                            <tr><td><strong>Git Workflow</strong></td><td>Main branch (prod), conventional commits (feat:, fix:, docs:)</td></tr>
+                            <tr><td><strong>Code Reviews</strong></td><td>PRs require 1+ approval, passing CI/CD tests</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="nfr" class="section">
+                    <h2><span class="icon">⚡</span> Non-Functional Requirements</h2>
+                    <p>These requirements represent design targets that guide expected performance, scalability, security, maintainability, and reliability.</p>
+
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Performance</h4>
+                            <ul>
+                                <li><strong>Response Time:</strong> ~2 seconds under typical conditions</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Scalability</h4>
+                            <ul>
+                                <li><strong>Daily Requests:</strong> Up to 1,000 requests per day per zone</li>
+                                <li><strong>GPS Tracking:</strong> ~1,000 concurrent collectors per city</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Security</h4>
+                            <ul>
+                                <li><strong>RBAC:</strong> Role-based access control at API level</li>
+                                <li><strong>Encryption:</strong> Data protection in transit and at rest</li>
+                                <li><strong>Audit Trail:</strong> Immutable collection records</li>
+                            </ul>
+                        </div>
+
+                        <div class="card">
+                            <h4>Reliability</h4>
+                            <ul>
+                                <li><strong>Availability:</strong> High availability for core features</li>
+                                <li><strong>Modular Design:</strong> Django apps by domain</li>
+                                <li><strong>Documentation:</strong> Automated Swagger/ReDoc generation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="future" class="section">
+                    <h2><span class="icon">🚀</span> Future Work</h2>
+                    <p>Features and improvements planned but not yet implemented, representing potential extensions beyond the current project scope.</p>
+                    
+                    <h3>Features Pending Implementation</h3>
+                    <div class="cards">
+                        <div class="card">
+                            <h4>Dynamic Pricing</h4>
+                            <p>Demand-based pricing adjustments based on time, location, and request volume.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Real-Time Incentives</h4>
+                            <p>Immediate incentive calculation after each completed collection.</p>
+                        </div>
+                        <div class="card">
+                            <h4>AI Route Optimization</h4>
+                            <p>AI-driven optimization across multiple zones or cities.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Rating Integration</h4>
+                            <p>Incorporate collector ratings into automated assignment logic.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Automated Compliance</h4>
+                            <p>Image analysis for waste segregation compliance scoring.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Offline Support</h4>
+                            <p>Allow offline data capture with sync when connected.</p>
+                        </div>
+                    </div>
+
+                    <h3>Technical Enhancements</h3>
+                    <ul>
+                        <li><strong>Scalability:</strong> Target significantly higher volumes with microservices architecture</li>
+                        <li><strong>Hybrid Stack:</strong> Go-based microservices for high-frequency operations like real-time GPS tracking</li>
+                        <li><strong>Analytics:</strong> Predictive analytics for missed stops, compliance trends, workload forecasting</li>
+                    </ul>
+
+                    <h3>Operational Improvements</h3>
+                    <ul>
+                        <li><strong>Supervisor Dashboards:</strong> Advanced predictive analytics and forecasting</li>
+                        <li><strong>Company Insights:</strong> Aggregated company-wide analytics and performance reports</li>
+                        <li><strong>Client Features:</strong> Loyalty programs, subscription tiers, push notifications</li>
+                    </ul>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Borla Tracker - Waste Management System</p>
+            <p style="margin-top: 0.5rem;">Built with Django, PostgreSQL, Redis, and Celery for production-grade waste collection operations</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Update active state in sidebar
+                    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    if (this.classList.contains('sidebar-nav')) {
+                        this.classList.add('active');
+                    }
+                }
+            });
+        });
+
+        // Update active navigation on scroll
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
