@@ -1,5 +1,5 @@
 from datetime import timedelta
-from accounts.permissions import IsClient
+from accounts.permissions import IsClient, IsSupervisorOrCompanyAdmin, IsSupervisor
 from rest_framework import status, viewsets, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -56,7 +56,7 @@ class ScheduledRequestViewSet(viewsets.ModelViewSet):
         ),
         responses={200: ScheduledRequestDetailSerializer},
     )
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes = [IsSupervisor])
     def assign(self, request, pk=None):
         scheduled_request = self.get_object()
         serializer = ScheduledRequestUpdateSerializer(
@@ -185,7 +185,7 @@ class ScheduledRequestViewSet(viewsets.ModelViewSet):
         operation_description="Retrieve all scheduled requests with status 'pending'.",
         responses={200: ScheduledRequestDetailSerializer(many=True)},
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'],permission_classes = [IsSupervisorOrCompanyAdmin])
     def list_pending(self, request):
         qs = self.get_queryset().filter(request_status="pending")
         serializer = ScheduledRequestDetailSerializer(qs, many=True)

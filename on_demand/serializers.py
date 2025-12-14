@@ -123,6 +123,7 @@ class OnDemandRequestCreateSerializer(serializers.ModelSerializer):
         return OnDemandRequest.objects.create(**validated_data)
 
 
+
 class OnDemandRequestUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for updating requests (assignment, acceptance, completion).

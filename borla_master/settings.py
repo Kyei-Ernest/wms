@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
@@ -122,6 +123,9 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": 
+        "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 20,
    # "DEFAULT_PERMISSION_CLASSES": [
     #    "rest_framework.permissions.IsAuthenticated",
  #   ]

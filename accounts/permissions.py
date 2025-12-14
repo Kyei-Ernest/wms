@@ -127,31 +127,38 @@ class IsCollectorOrCompanyAdmin(BasePermission):
     - company admins to view all collectors in their company
     """
 
-    def has_object_permission(self, request, view, obj):
+
+    def has_permission(self, request, view):
         user = request.user
 
-        if user.role == "collector":
-            return obj.user == user  
-
-        if user.role == "company":
-            return obj.company and obj.company.user == user  # company admin owns them
-
-        return False
-    
-
-class IsSupervisorOrCompanyAdmin(BasePermission):
-        """Rules:
-        - Supervisors can edit their own profile
-        - Company admin can view/update supervisors in their company
-        """
-
-        def has_object_permission(self, request, view, obj):
-            user = request.user
-
-            if user.role == "supervisor":
-                return obj.user == user
-
-            if user.role == "company":
-                return obj.company.user == user
-
+        if not user or not user.is_authenticated:
             return False
+
+        return user.role in ("collector", "company")
+
+    
+class IsSupervisorOrCompanyAdmin(BasePermission):
+    """
+    Allows access to supervisors or company admins
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            return False
+
+        return user.role in ("supervisor", "company")
+    
+class IsSupervisorOrCollector(BasePermission):
+    """
+    Allows access to supervisors or company admins
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            return False
+
+        return user.role in ("supervisor", "collector")

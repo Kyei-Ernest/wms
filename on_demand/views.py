@@ -35,22 +35,34 @@ class OnDemandRequestViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = OnDemandRequest.objects.all()
 
+        # Supervisor access
         if IsSupervisor().has_permission(self.request, self):
-            return qs.filter(company=user.company)
+            supervisor = getattr(user, 'supervisor', None)
+            company = getattr(supervisor, 'company', None) if supervisor else None
+            return qs.filter(company=company) if company else qs.none()
 
+        # Company access
         if IsCompany().has_permission(self.request, self):
-            return qs.filter(company=user.company)
+            company_obj = getattr(user, 'company', None)
+            return qs.filter(company=company_obj) if company_obj else qs.none()
 
+        # Collector access
         if IsCollector().has_permission(self.request, self):
-            return qs.filter(collector=user.collector)
+            collector = getattr(user, 'collector', None)
+            return qs.filter(collector=collector) if collector else qs.none()
 
+        # Private collector access
         if IsPrivateCollector().has_permission(self.request, self):
-            return qs.filter(collector=user.collector)
+            collector = getattr(user, 'collector', None)
+            return qs.filter(collector=collector) if collector else qs.none()
 
+        # Client access
         if IsClient().has_permission(self.request, self):
             return qs.filter(client=user)
 
+        # Default fallback: no access
         return qs.none()
+
 
 
     # ---------------------------
