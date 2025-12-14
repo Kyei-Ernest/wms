@@ -417,7 +417,54 @@
             margin-bottom: 0.5rem;
         }
 
+        .diagram-container {
+            margin: 1.5rem 0;
+            text-align: center;
+            background: var(--code-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .diagram-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .diagram-container img:hover {
+            transform: scale(1.02);
+        }
+
+        .diagram-caption {
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .mobile-menu-btn:hover {
+            background: var(--primary-dark);
+        }
+
         @media (max-width: 968px) {
+            .container {
+                padding: 0 1rem;
+            }
+
             .main-content {
                 flex-direction: column;
             }
@@ -426,14 +473,75 @@
                 width: 100%;
                 position: static;
                 max-height: none;
+                display: none;
+            }
+
+            .sidebar.active {
+                display: block;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+                width: 100%;
             }
 
             .hero h1 {
-                font-size: 2rem;
+                font-size: 1.75rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
             }
 
             .nav {
                 display: none;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .section h2 {
+                font-size: 1.5rem;
+            }
+
+            .section h3 {
+                font-size: 1.25rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.6rem;
+            }
+
+            .tech-stack {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.5rem;
+            }
+
+            .section h2 {
+                font-size: 1.3rem;
             }
         }
     </style>
@@ -473,6 +581,10 @@
     </section>
 
     <div class="container">
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            📑 Toggle Navigation Menu
+        </button>
+        
         <div class="main-content">
             <aside class="sidebar">
                 <nav class="sidebar-nav">
@@ -731,6 +843,10 @@ python manage.py runserver</code></div>
                         <h4>🔗 View Complete ERD Diagram</h4>
                         <p>For the complete entity relationship diagram showing all tables, foreign keys, and constraints, please refer to the full documentation or database design diagrams.</p>
                     </div>
+                    <div class="diagram-container">
+                        <img src="https://kyei-ernest.github.io/wms/documentation/er_diagram.png" alt="Use Case Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Click image to view full size</p>
+                    </div>
 
                     <h3>Migration Strategy</h3>
                     <div class="cards">
@@ -960,9 +1076,16 @@ python manage.py migrate</code></div>
                     </div>
 
                     <div class="info-box">
-                        <h4>🔗 View Use Case Diagram</h4>
-                        <p>For a visual representation of actor interactions and system use cases, refer to the complete documentation diagrams.</p>
+                        <h4>🔗 Visual Diagrams</h4>
+                        <p>Use Case Diagram - Shows all actor interactions with the system</p>
                     </div>
+
+                    <div class="diagram-container">
+                        <img src="https://kyei-ernest.github.io/wms/documentation/usecase.png" alt="Use Case Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Click image to view full size</p>
+                    </div>
+
+                   
                 </section>
 
                 <section id="models" class="section">
@@ -1062,8 +1185,15 @@ python manage.py migrate</code></div>
 
                     <div class="info-box">
                         <h4>🔗 View UML Diagram</h4>
-                        <p>For a complete UML class diagram with all relationships and methods, refer to the full documentation.</p>
+                        <p>Complete UML class diagram with all relationships and methods</p>
                     </div>
+
+                    <div class="diagram-container">
+                        <img src="https://kyei-ernest.github.io/wms/documentation/uml1.png" alt="UML Class Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Click image to view full size - Shows all models, fields, methods, and relationships</p>
+                    </div>
+
+                    
                 </section>
 
                 <section id="authentication" class="section">
@@ -1249,6 +1379,11 @@ python manage.py migrate</code></div>
                         </div>
                     </div>
 
+                    <div class="diagram-container">
+                        <img src="path/to/client-workflow-diagram.png" alt="Client Workflow Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Client Workflow Sequence Diagram - Click to enlarge</p>
+                    </div>
+
                     <h3>2. Collector Workflows</h3>
                     <div class="cards">
                         <div class="card">
@@ -1277,6 +1412,11 @@ python manage.py migrate</code></div>
                         </div>
                     </div>
 
+                    <div class="diagram-container">
+                        <img src="path/to/collector-workflow-diagram.png" alt="Collector Workflow Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Collector Workflow Sequence Diagram - Click to enlarge</p>
+                    </div>
+
                     <h3>3. Supervisor Workflows</h3>
                     <div class="cards">
                         <div class="card">
@@ -1303,6 +1443,11 @@ python manage.py migrate</code></div>
                             <h4>Handle Escalations</h4>
                             <p>Manually assign requests if auto-assignment fails.</p>
                         </div>
+                    </div>
+
+                    <div class="diagram-container">
+                        <img src="path/to/supervisor-workflow-diagram.png" alt="Supervisor Workflow Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Supervisor Workflow Sequence Diagram - Click to enlarge</p>
                     </div>
 
                     <h3>4. Company Workflows</h3>
@@ -1521,6 +1666,12 @@ pytest --cov=apps/</code></div>
     </footer>
 
     <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('active');
+        }
+
         // Smooth scrolling for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -1535,6 +1686,11 @@ pytest --cov=apps/</code></div>
                     });
                     if (this.classList.contains('sidebar-nav')) {
                         this.classList.add('active');
+                    }
+
+                    // Close mobile menu after selection
+                    if (window.innerWidth <= 968) {
+                        document.querySelector('.sidebar').classList.remove('active');
                     }
                 }
             });
