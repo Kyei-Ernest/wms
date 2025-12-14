@@ -158,6 +158,35 @@
             height: fit-content;
             max-height: calc(100vh - 120px);
             overflow-y: auto;
+            transition: all 0.3s;
+        }
+
+        .sidebar.mobile-active {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            max-height: 100vh;
+            z-index: 1002;
+            background: var(--bg-dark);
+            padding: 1rem;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1001;
+        }
+
+        .mobile-overlay.active {
+            display: block;
         }
 
         .sidebar::-webkit-scrollbar {
@@ -450,14 +479,24 @@
             color: white;
             border: none;
             padding: 0.75rem 1.5rem;
-            border-radius: 8px;
+            border-radius: 50px;
             font-weight: 600;
             cursor: pointer;
-            margin-bottom: 1rem;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1001;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            transition: all 0.3s;
         }
 
         .mobile-menu-btn:hover {
             background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .mobile-menu-btn:active {
+            transform: scale(0.95);
         }
 
         @media (max-width: 968px) {
@@ -480,9 +519,19 @@
                 display: block;
             }
 
-            .mobile-menu-btn {
+            .sidebar.mobile-active {
                 display: block;
-                width: 100%;
+            }
+
+            .mobile-menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+                width: 60px;
+                height: 60px;
+                padding: 0;
+                font-size: 1.5rem;
             }
 
             .hero h1 {
@@ -562,6 +611,12 @@
         </div>
     </header>
 
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+        📑
+    </button>
+
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
+
     <section class="hero">
         <div class="container">
             <h1>Borla Tracker Backend Documentation</h1>
@@ -581,10 +636,6 @@
     </section>
 
     <div class="container">
-        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
-            📑 Toggle Navigation Menu
-        </button>
-        
         <div class="main-content">
             <aside class="sidebar">
                 <nav class="sidebar-nav">
@@ -843,10 +894,6 @@ python manage.py runserver</code></div>
                         <h4>🔗 View Complete ERD Diagram</h4>
                         <p>For the complete entity relationship diagram showing all tables, foreign keys, and constraints, please refer to the full documentation or database design diagrams.</p>
                     </div>
-                    <div class="diagram-container">
-                        <img src="https://kyei-ernest.github.io/wms/documentation/er_diagram.png" alt="Use Case Diagram" onclick="window.open(this.src)">
-                        <p class="diagram-caption">Click image to view full size</p>
-                    </div>
 
                     <h3>Migration Strategy</h3>
                     <div class="cards">
@@ -1081,11 +1128,13 @@ python manage.py migrate</code></div>
                     </div>
 
                     <div class="diagram-container">
-                        <img src="https://kyei-ernest.github.io/wms/documentation/usecase.png" alt="Use Case Diagram" onclick="window.open(this.src)">
+                        <img src="path/to/use-case-diagram.png" alt="Use Case Diagram" onclick="window.open(this.src)">
                         <p class="diagram-caption">Click image to view full size</p>
                     </div>
 
-                   
+                    <div class="info-box">
+                        <p><strong>Note:</strong> Replace "path/to/use-case-diagram.png" with your actual image URL. You can upload your diagrams to GitHub, Imgur, or any image hosting service and paste the URL here.</p>
+                    </div>
                 </section>
 
                 <section id="models" class="section">
@@ -1189,11 +1238,13 @@ python manage.py migrate</code></div>
                     </div>
 
                     <div class="diagram-container">
-                        <img src="https://kyei-ernest.github.io/wms/documentation/uml1.png" alt="UML Class Diagram" onclick="window.open(this.src)">
+                        <img src="path/to/uml-diagram.png" alt="UML Class Diagram" onclick="window.open(this.src)">
                         <p class="diagram-caption">Click image to view full size - Shows all models, fields, methods, and relationships</p>
                     </div>
 
-                    
+                    <div class="info-box">
+                        <p><strong>Note:</strong> Replace "path/to/uml-diagram.png" with your actual UML diagram URL.</p>
+                    </div>
                 </section>
 
                 <section id="authentication" class="section">
@@ -1379,9 +1430,36 @@ python manage.py migrate</code></div>
                         </div>
                     </div>
 
+                    <h3>Client Workflow Sequence Diagrams</h3>
+                    
+                    <h4>Account Registration Flow</h4>
                     <div class="diagram-container">
-                        <img src="path/to/client-workflow-diagram.png" alt="Client Workflow Sequence Diagram" onclick="window.open(this.src)">
-                        <p class="diagram-caption">Client Workflow Sequence Diagram - Click to enlarge</p>
+                        <img src="sequence_diagrams/1a.png" alt="Client Registration Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Client Account Registration - Click to enlarge</p>
+                    </div>
+
+                    <h4>Create On-Demand Request Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/1b.png"" alt="On-Demand Request Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">On-Demand Request Creation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Create Scheduled Request Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/1c.png"" alt="Scheduled Request Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Scheduled Request Creation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Track Request Status Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/1d.png"" alt="Request Tracking Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Request Status Tracking - Click to enlarge</p>
+                    </div>
+
+                    <h4>Wallet & Payment Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/1e.png"" alt="Payment Flow Sequence Diagram" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Wallet Payment Processing - Click to enlarge</p>
                     </div>
 
                     <h3>2. Collector Workflows</h3>
@@ -1412,9 +1490,42 @@ python manage.py migrate</code></div>
                         </div>
                     </div>
 
+                    <h3>Collector Workflow Sequence Diagrams</h3>
+
+                    <h4>Private Collector Registration Flow</h4>
                     <div class="diagram-container">
-                        <img src="path/to/collector-workflow-diagram.png" alt="Collector Workflow Sequence Diagram" onclick="window.open(this.src)">
-                        <p class="diagram-caption">Collector Workflow Sequence Diagram - Click to enlarge</p>
+                        <img src="sequence_diagrams/2a.png" alt="Private Collector Registration Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Private Collector Self-Registration - Click to enlarge</p>
+                    </div>
+
+                    <h4>Company Collector Onboarding Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/2b.png" alt="Company Collector Onboarding Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Company Collector Onboarding & Approval - Click to enlarge</p>
+                    </div>
+
+                    <h4>Accept Assigned Request Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/2c.png" alt="Accept Request Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Collector Accepts Assignment - Click to enlarge</p>
+                    </div>
+
+                    <h4>Update Collection Status Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/2d.png" alt="Update Status Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Collection Status Updates - Click to enlarge</p>
+                    </div>
+
+                    <h4>Upload Collection Evidence Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/2e.png" alt="Upload Evidence Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Evidence Submission (Photos & Notes) - Click to enlarge</p>
+                    </div>
+
+                    <h4>GPS Broadcast & Validation Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/2f.png" alt="GPS Validation Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">GPS Location Validation - Click to enlarge</p>
                     </div>
 
                     <h3>3. Supervisor Workflows</h3>
@@ -1445,9 +1556,42 @@ python manage.py migrate</code></div>
                         </div>
                     </div>
 
+                    <h3>Supervisor Workflow Sequence Diagrams</h3>
+
+                    <h4>Approve Company Collector Flow</h4>
                     <div class="diagram-container">
-                        <img src="path/to/supervisor-workflow-diagram.png" alt="Supervisor Workflow Sequence Diagram" onclick="window.open(this.src)">
-                        <p class="diagram-caption">Supervisor Workflow Sequence Diagram - Click to enlarge</p>
+                        <img src="sequence_diagrams/3a.png" alt="Approve Collector Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Collector Approval Process - Click to enlarge</p>
+                    </div>
+
+                    <h4>Monitor Routes Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/3b.png" alt="Monitor Routes Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Route Monitoring & Progress Tracking - Click to enlarge</p>
+                    </div>
+
+                    <h4>View Performance Dashboard Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/3c.png" alt="Performance Dashboard Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Performance Dashboard & KPIs - Click to enlarge</p>
+                    </div>
+
+                    <h4>Generate Weekly Routes Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/3d.png" alt="Generate Routes Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Weekly Route Generation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Assign Collectors to Routes Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/3e.png" alt="Assign Collectors Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Collector Assignment to Routes - Click to enlarge</p>
+                    </div>
+
+                    <h4>Handle Escalations Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/3f.png" alt="Escalations Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Manual Assignment Escalations - Click to enlarge</p>
                     </div>
 
                     <h3>4. Company Workflows</h3>
@@ -1457,10 +1601,32 @@ python manage.py migrate</code></div>
                         <li><strong>Approve Registrations:</strong> Validate pending collector accounts</li>
                     </ul>
 
+                    <h4>Company Workflow Sequence Diagrams</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/4a.png" alt="Create Supervisor Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Supervisor Creation - Click to enlarge</p>
+                    </div>
+
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/4b.png" alt="Create Collector Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Company Collector Creation - Click to enlarge</p>
+                    </div>
+
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/4c.png" alt="Approve Registration Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Collector Registration Approval - Click to enlarge</p>
+                    </div>
+
                     <h3>5. Admin Workflows</h3>
                     <ul>
                         <li><strong>View System Statistics:</strong> Monitor system-wide KPIs and operational metrics</li>
                     </ul>
+
+                    <h4>Admin Workflow Sequence Diagram</h4>
+                    <div class="diagram-container">
+                        <img src="path/to/admin-statistics-sequence.png" alt="Admin Statistics Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">System Statistics & Monitoring - Click to enlarge</p>
+                    </div>
 
                     <h3>6. System Workflows (Automated)</h3>
                     <ul>
@@ -1471,6 +1637,42 @@ python manage.py migrate</code></div>
                         <li><strong>Compliance Validation:</strong> Check segregation compliance and flag violations</li>
                         <li><strong>Audit Logging:</strong> Record immutable collection evidence</li>
                     </ul>
+                    
+                    <h4>Route Completion Update Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/6a.png" alt="Route Completion Update" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Route Completion Update - Click to enlarge</p>
+                    </div>
+
+                    <h4>Incentive Calculation Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/6b.png" alt="Incentive Calculation" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Incentive Calculation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Penalty Calculation Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/6c.png" alt="Penalty Calculation" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Penalty Calculation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Pricing Calculation Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/6d.png" alt="Pricing Calculation Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Pricing Calculation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Compliance Validation Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/6e.png" alt="Compliance Validation Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Compliance Validation - Click to enlarge</p>
+                    </div>
+
+                    <h4>Audit Logging Flow</h4>
+                    <div class="diagram-container">
+                        <img src="sequence_diagrams/6f.png" alt="Audit Loggings Sequence" onclick="window.open(this.src)">
+                        <p class="diagram-caption">Audit Logging - Click to enlarge</p>
+                    </div>
                 </section>
 
                 <section id="background-tasks" class="section">
@@ -1669,7 +1871,16 @@ pytest --cov=apps/</code></div>
         // Mobile menu toggle
         function toggleMobileMenu() {
             const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('active');
+            const overlay = document.querySelector('.mobile-overlay');
+            sidebar.classList.toggle('mobile-active');
+            overlay.classList.toggle('active');
+        }
+
+        function closeMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            sidebar.classList.remove('mobile-active');
+            overlay.classList.remove('active');
         }
 
         // Smooth scrolling for navigation links
@@ -1684,13 +1895,13 @@ pytest --cov=apps/</code></div>
                     document.querySelectorAll('.sidebar-nav a').forEach(link => {
                         link.classList.remove('active');
                     });
-                    if (this.classList.contains('sidebar-nav')) {
+                    if (this.closest('.sidebar-nav')) {
                         this.classList.add('active');
                     }
 
                     // Close mobile menu after selection
                     if (window.innerWidth <= 968) {
-                        document.querySelector('.sidebar').classList.remove('active');
+                        closeMobileMenu();
                     }
                 }
             });
